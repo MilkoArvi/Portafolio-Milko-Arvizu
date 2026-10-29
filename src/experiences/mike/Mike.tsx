@@ -1,7 +1,8 @@
 "use client";
 
 import { AnimatePresence, motion, useInView, useScroll, useTransform } from "motion/react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import type { Locale } from "@/config/site";
 import { BlackHole } from "./BlackHole";
 import { answer, SUGGESTIONS } from "./brain";
 
@@ -26,15 +27,121 @@ type RecCtor = new () => Recognition;
 
 type Status = "idle" | "asking" | "listening" | "thinking" | "speaking";
 
-const ERRORS: Record<string, string> = {
-  denied: "Sin permiso para el micrófono. Actívalo en el candado de la barra de direcciones o escríbele.",
-  unsupported: "Tu navegador no reconoce voz. Escríbele a Mike y te contesta en voz alta.",
-  network: "Este navegador no trae reconocimiento de voz (pasa en Opera y Brave). Escríbele a Mike; contesta en voz alta igual.",
-  "no-speech": "No te escuché. Toca el micrófono e inténtalo otra vez.",
-  "audio-capture": "No encontré un micrófono conectado.",
+const COPY = {
+  es: {
+    speech: "es",
+    errors: {
+      denied: "Sin permiso para el micrófono. Actívalo en el candado de la barra de direcciones o escríbele.",
+      unsupported: "Tu navegador no reconoce voz. Escríbele a Mike y te contesta en voz alta.",
+      network: "Este navegador no trae reconocimiento de voz (pasa en Opera y Brave). Escríbele a Mike; contesta en voz alta igual.",
+      "no-speech": "No te escuché. Toca el micrófono e inténtalo otra vez.",
+      "audio-capture": "No encontré un micrófono conectado.",
+    } as Record<string, string>,
+    status: { idle: "Mike está en órbita", asking: "Esperando permiso del micrófono", listening: "Te escucho", thinking: "Pensando", speaking: "Mike está hablando" },
+    stop: "Dejar de escuchar",
+    talk: "Hablar con Mike",
+    askVoice: "Pregúntale cómo lo crearon.",
+    askType: "Escríbele abajo.",
+    mute: "Silenciar la voz de Mike",
+    unmute: "Activar la voz de Mike",
+    write: "Escríbele a Mike",
+    placeholder: "O escríbele aquí",
+    send: "Enviar",
+    privacy: "El reconocimiento de voz lo hace tu navegador. Este sitio no guarda audio ni texto.",
+    triggers: ["Aplauso", "Chasquido", "“Oye, Mike”", "Gesto con la mano"],
+    detected: (x: string) => `Detectado: ${x}`,
+    waiting: "En espera",
+    corner: "Mike espera aquí, en la esquina.",
+    example: "Te muestro un ejemplo",
+    grid: "Así se centra cualquier cosa con Grid.",
+    cls: ".contenedor",
+    agents: [
+      { name: "Escucha", job: "Convierte voz, aplausos y gestos en intenciones." },
+      { name: "Decide", job: "Elige qué agente atiende cada intención." },
+      { name: "Ejecuta", job: "Abre apps y controla luces, audio y cámara." },
+      { name: "Recuerda", job: "Lee y escribe notas en Obsidian para todos." },
+    ],
+    memory: "memoria compartida",
+    agentsAria: "Cuatro agentes conectados a una memoria compartida en Obsidian",
+    devices: ["Luces RGB", "Micrófono", "Bocinas", "Cámara", "Apps"],
+    bootTitle: "mike@milko-pc ~ inicio automático",
+    boot: [
+      "[ ok ] Sesión iniciada",
+      "[ ok ] Cargando memoria compartida (Obsidian)",
+      "[ ok ] Agente Escucha: micrófono y cámara listos",
+      "[ ok ] Agente Ejecuta: apps y dispositivos conectados",
+      "[ ok ] Agente Recuerda: notas indexadas",
+      "[ ok ] Agente Decide: en línea",
+      "Mike está listo.",
+    ],
+    intro: "Un asistente que vive en mi PC. Aquí tiene cara de agujero negro de verdad: la luz se dobla, el disco quema y, si le hablas, contesta.",
+    wake: ["Activación", "Se despierta como tú quieras", "Mike responde a un aplauso, un chasquido, la frase “Oye, Mike” o un gesto frente a la cámara. Prueba cada uno."],
+    ui: ["Interfaz", "Un agujero negro en la esquina", "Vive pequeño abajo a la izquierda. Cuando tiene algo que enseñarte, se traga la pantalla."],
+    arch: ["Arquitectura", "Cuatro agentes, una memoria", "Cada agente hace una sola cosa bien. Comparten lo que saben en una bóveda de Obsidian, así lo que uno aprende lo usan los demás."],
+    control: ["Control", "Mueve lo que tocas a diario", "Mike abre programas y controla el hardware de la PC: luces, micrófono, bocinas y cámara. Todo con herramientas gratuitas."],
+    start: ["Arranque", "Se enciende con la PC", "No hay que abrirlo. Cuando la computadora arranca, Mike carga su memoria, levanta a sus agentes y se queda esperando."],
+  },
+  en: {
+    speech: "en",
+    errors: {
+      denied: "No microphone permission. Turn it on from the padlock in the address bar, or type to Mike.",
+      unsupported: "Your browser doesn't recognize speech. Type to Mike and it'll answer out loud.",
+      network: "This browser doesn't ship speech recognition (it happens in Opera and Brave). Type to Mike; it still answers out loud.",
+      "no-speech": "I didn't hear you. Tap the mic and try again.",
+      "audio-capture": "I couldn't find a connected microphone.",
+    } as Record<string, string>,
+    status: { idle: "Mike is in orbit", asking: "Waiting for microphone permission", listening: "I'm listening", thinking: "Thinking", speaking: "Mike is speaking" },
+    stop: "Stop listening",
+    talk: "Talk to Mike",
+    askVoice: "Ask it how it was made.",
+    askType: "Type to it below.",
+    mute: "Mute Mike's voice",
+    unmute: "Turn on Mike's voice",
+    write: "Type to Mike",
+    placeholder: "Or type here",
+    send: "Send",
+    privacy: "Speech recognition happens in your browser. This site doesn't store any audio or text.",
+    triggers: ["Clap", "Snap", "“Hey, Mike”", "Hand gesture"],
+    detected: (x: string) => `Detected: ${x}`,
+    waiting: "Standing by",
+    corner: "Mike waits here, in the corner.",
+    example: "Let me show you an example",
+    grid: "This is how you center anything with Grid.",
+    cls: ".container",
+    agents: [
+      { name: "Listen", job: "Turns voice, claps and gestures into intents." },
+      { name: "Decide", job: "Picks which agent handles each intent." },
+      { name: "Act", job: "Opens apps and controls lights, audio and camera." },
+      { name: "Remember", job: "Reads and writes notes in Obsidian for everyone." },
+    ],
+    memory: "shared memory",
+    agentsAria: "Four agents connected to a shared memory in Obsidian",
+    devices: ["RGB lights", "Microphone", "Speakers", "Camera", "Apps"],
+    bootTitle: "mike@milko-pc ~ autostart",
+    boot: [
+      "[ ok ] Session started",
+      "[ ok ] Loading shared memory (Obsidian)",
+      "[ ok ] Listen agent: mic and camera ready",
+      "[ ok ] Act agent: apps and devices connected",
+      "[ ok ] Remember agent: notes indexed",
+      "[ ok ] Decide agent: online",
+      "Mike is ready.",
+    ],
+    intro: "An assistant that lives on my PC. Here it has the face of a real black hole: light bends, the disk burns and, if you talk to it, it answers.",
+    wake: ["Activation", "It wakes up however you like", "Mike responds to a clap, a snap, the phrase “Hey, Mike” or a gesture in front of the camera. Try each one."],
+    ui: ["Interface", "A black hole in the corner", "It lives small in the bottom left. When it has something to show you, it swallows the screen."],
+    arch: ["Architecture", "Four agents, one memory", "Each agent does one thing well. They share what they know in an Obsidian vault, so what one learns, the others use."],
+    control: ["Control", "It moves what you touch every day", "Mike opens programs and controls the PC's hardware: lights, mic, speakers and camera. All with free tools."],
+    start: ["Startup", "It turns on with the PC", "No need to open it. When the computer boots, Mike loads its memory, brings up its agents and waits."],
+  },
 };
+type Copy = (typeof COPY)["es"];
+// los componentes de la página leen sus textos de aquí
+const T = createContext<Copy>(COPY.es);
+const useT = () => useContext(T);
 
-function useMike() {
+function useMike(locale: Locale) {
+  const t = COPY[locale];
   const energy = useRef(REST);
   const [status, setStatus] = useState<Status>("idle");
   const [heard, setHeard] = useState("");
@@ -55,7 +162,9 @@ function useMike() {
     if (!("speechSynthesis" in window)) return;
     const choose = () => {
       const vs = speechSynthesis.getVoices();
-      voice.current = vs.find((v) => v.lang === "es-MX") ?? vs.find((v) => v.lang === "es-US") ?? vs.find((v) => v.lang.startsWith("es")) ?? null;
+      voice.current = t.speech === "en"
+        ? vs.find((v) => v.lang === "en-US") ?? vs.find((v) => v.lang === "en-GB") ?? vs.find((v) => v.lang.startsWith("en")) ?? null
+        : vs.find((v) => v.lang === "es-MX") ?? vs.find((v) => v.lang === "es-US") ?? vs.find((v) => v.lang.startsWith("es")) ?? null;
     };
     choose();
     speechSynthesis.addEventListener("voiceschanged", choose);
@@ -66,7 +175,7 @@ function useMike() {
       mic.current?.stop();
       timers.current.forEach(clearTimeout);
     };
-  }, []);
+  }, [t.speech]);
 
   const later = (fn: () => void, ms: number) => { timers.current.push(window.setTimeout(fn, ms)); };
 
@@ -80,7 +189,7 @@ function useMike() {
     }
     speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = voice.current?.lang ?? "es-MX";
+    u.lang = voice.current?.lang ?? (t.speech === "en" ? "en-US" : "es-MX");
     if (voice.current) u.voice = voice.current;
     u.rate = 1.02;
     u.pitch = 0.82;
@@ -90,7 +199,7 @@ function useMike() {
     u.onend = u.onerror = () => { setStatus("idle"); energy.current = REST; };
     // Chrome a veces ignora un speak() justo después de cancel(); un respiro lo evita
     later(() => speechSynthesis.speak(u), 60);
-  }, []);
+  }, [t.speech]);
 
   const ask = useCallback((text: string) => {
     const q = text.trim();
@@ -100,15 +209,15 @@ function useMike() {
     setReply("");
     setStatus("thinking");
     energy.current = 0.5;
-    later(() => speak(answer(q)), 520);
-  }, [speak]);
+    later(() => speak(answer(q, locale)), 520);
+  }, [speak, locale]);
 
   const listen = useCallback(async () => {
     if (status === "listening") { rec.current?.stop(); return; }
     setError(null);
     const w = window as unknown as { SpeechRecognition?: RecCtor; webkitSpeechRecognition?: RecCtor };
     const Ctor = w.SpeechRecognition || w.webkitSpeechRecognition;
-    if (!Ctor) { setError(ERRORS.unsupported); return; }
+    if (!Ctor) { setError(t.errors.unsupported); return; }
     if ("speechSynthesis" in window) speechSynthesis.cancel();
 
     // Pedimos el micrófono de forma explícita: así aparece el permiso y además medimos el volumen.
@@ -118,7 +227,7 @@ function useMike() {
       stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
     } catch {
       setStatus("idle");
-      setError(ERRORS.denied);
+      setError(t.errors.denied);
       return;
     }
     const ac = new AudioContext();
@@ -139,7 +248,7 @@ function useMike() {
 
     const r = new Ctor();
     rec.current = r;
-    r.lang = "es-MX";
+    r.lang = t.speech === "en" ? "en-US" : "es-MX";
     r.interimResults = true;
     r.continuous = false;
     r.maxAlternatives = 1;
@@ -161,16 +270,16 @@ function useMike() {
       else {
         setStatus("idle");
         energy.current = REST;
-        if (failed === "not-allowed" || failed === "service-not-allowed") setError(ERRORS.denied);
-        else if (failed && failed !== "aborted") setError(ERRORS[failed] ?? ERRORS.network);
-        else if (!failed) setError(ERRORS["no-speech"]);
+        if (failed === "not-allowed" || failed === "service-not-allowed") setError(t.errors.denied);
+        else if (failed && failed !== "aborted") setError(t.errors[failed] ?? t.errors.network);
+        else if (!failed) setError(t.errors["no-speech"]);
       }
     };
     setHeard("");
     setReply("");
     setStatus("listening");
     try { r.start(); } catch { r.onend?.(); }
-  }, [ask, status]);
+  }, [ask, status, t]);
 
   const wake = useCallback(() => {
     energy.current = 1;
@@ -181,13 +290,14 @@ function useMike() {
 }
 
 function MicButton({ status, onClick }: { status: Status; onClick: () => void }) {
+  const t = useT();
   const live = status === "listening";
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={live}
-      aria-label={live ? "Dejar de escuchar" : "Hablar con Mike"}
+      aria-label={live ? t.stop : t.talk}
       className="relative grid size-16 shrink-0 place-items-center rounded-full bg-[#ffcf8a] text-[#120c06] shadow-[0_0_40px_-6px_rgba(255,190,110,0.7)] transition-transform active:scale-90"
     >
       {live && [0, 1, 2].map((i) => (
@@ -207,15 +317,8 @@ function MicButton({ status, onClick }: { status: Status; onClick: () => void })
   );
 }
 
-const STATUS_TEXT: Record<Status, string> = {
-  idle: "Mike está en órbita",
-  asking: "Esperando permiso del micrófono",
-  listening: "Te escucho",
-  thinking: "Pensando",
-  speaking: "Mike está hablando",
-};
-
-function Console({ m }: { m: ReturnType<typeof useMike> }) {
+function Console({ m, locale }: { m: ReturnType<typeof useMike>; locale: Locale }) {
+  const t = useT();
   const [text, setText] = useState("");
   return (
     <div className="w-full rounded-3xl border border-white/10 bg-black/45 p-4 backdrop-blur-xl sm:p-5">
@@ -224,17 +327,17 @@ function Console({ m }: { m: ReturnType<typeof useMike> }) {
         <div className="min-w-0 flex-1">
           <AnimatePresence mode="wait">
             <motion.p key={m.status} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} className="font-display text-lg">
-              {STATUS_TEXT[m.status]}
+              {t.status[m.status]}
               {(m.status === "listening" || m.status === "thinking") && <span className="motion-safe:animate-pulse">…</span>}
             </motion.p>
           </AnimatePresence>
-          <p className="truncate text-sm text-white/45">{m.supported ? "Pregúntale cómo lo crearon." : "Escríbele abajo."}</p>
+          <p className="truncate text-sm text-white/45">{m.supported ? t.askVoice : t.askType}</p>
         </div>
         <button
           type="button"
           onClick={() => { m.setSound(!m.sound); if (m.sound && "speechSynthesis" in window) speechSynthesis.cancel(); }}
           aria-pressed={m.sound}
-          aria-label={m.sound ? "Silenciar la voz de Mike" : "Activar la voz de Mike"}
+          aria-label={m.sound ? t.mute : t.unmute}
           className="grid size-10 place-items-center rounded-full border border-white/15 text-white/70 hover:border-white/40 hover:text-white"
         >
           <svg aria-hidden viewBox="0 0 24 24" className="size-5 fill-none stroke-current" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
@@ -269,25 +372,25 @@ function Console({ m }: { m: ReturnType<typeof useMike> }) {
         className="mt-4 flex gap-2"
         onSubmit={(e) => { e.preventDefault(); m.ask(text); setText(""); }}
       >
-        <label className="sr-only" htmlFor="ask-mike">Escríbele a Mike</label>
+        <label className="sr-only" htmlFor="ask-mike">{t.write}</label>
         <input
           id="ask-mike"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="O escríbele aquí"
+          placeholder={t.placeholder}
           autoComplete="off"
           className="min-w-0 flex-1 rounded-full border border-white/12 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/35 focus:border-[#ffcf8a]/60 focus:outline-none"
         />
-        <button type="submit" className="rounded-full bg-white/10 px-4 text-sm font-semibold hover:bg-white/20">Enviar</button>
+        <button type="submit" className="rounded-full bg-white/10 px-4 text-sm font-semibold hover:bg-white/20">{t.send}</button>
       </form>
       <div className="no-scrollbar -mx-1 mt-3 flex gap-2 overflow-x-auto px-1">
-        {SUGGESTIONS.map((s) => (
+        {SUGGESTIONS[locale].map((s) => (
           <button key={s} type="button" onClick={() => m.ask(s)} className="shrink-0 rounded-full border border-white/12 px-3 py-1.5 text-xs text-white/70 hover:border-[#ffcf8a]/50 hover:text-white">
             {s}
           </button>
         ))}
       </div>
-      <p className="mt-3 text-[0.7rem] leading-snug text-white/35">El reconocimiento de voz lo hace tu navegador. Este sitio no guarda audio ni texto.</p>
+      <p className="mt-3 text-[0.7rem] leading-snug text-white/35">{t.privacy}</p>
     </div>
   );
 }
@@ -313,10 +416,10 @@ function Chapter({ kicker, title, body, children, flip = false }: { kicker: stri
 }
 
 const TRIGGERS = [
-  { id: "aplauso", label: "Aplauso", icon: "M7 11V6a2 2 0 1 1 4 0v5m0-2V4a2 2 0 1 1 4 0v7m0-3a2 2 0 1 1 4 0v6a7 7 0 0 1-12 5l-3-4a2 2 0 0 1 3-3l1 1" },
-  { id: "chasquido", label: "Chasquido", icon: "M9 12l2-7a2 2 0 0 1 4 1l-1 5h4a2 2 0 0 1 2 2c0 4-3 8-8 8a6 6 0 0 1-6-6V9M5 4l1 2M3 8h2M8 2v2" },
-  { id: "voz", label: "“Oye, Mike”", icon: "M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Zm-7 9a7 7 0 0 0 14 0M12 19v3" },
-  { id: "gesto", label: "Gesto con la mano", icon: "M18 11V6a2 2 0 0 0-4 0v5m0-1V4a2 2 0 0 0-4 0v6m0 0V6a2 2 0 0 0-4 0v8l-2-2a2 2 0 0 0-3 3l4 5a7 7 0 0 0 13-4v-5a2 2 0 0 0-4 0" },
+  { id: "aplauso", icon: "M7 11V6a2 2 0 1 1 4 0v5m0-2V4a2 2 0 1 1 4 0v7m0-3a2 2 0 1 1 4 0v6a7 7 0 0 1-12 5l-3-4a2 2 0 0 1 3-3l1 1" },
+  { id: "chasquido", icon: "M9 12l2-7a2 2 0 0 1 4 1l-1 5h4a2 2 0 0 1 2 2c0 4-3 8-8 8a6 6 0 0 1-6-6V9M5 4l1 2M3 8h2M8 2v2" },
+  { id: "voz", icon: "M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Zm-7 9a7 7 0 0 0 14 0M12 19v3" },
+  { id: "gesto", icon: "M18 11V6a2 2 0 0 0-4 0v5m0-1V4a2 2 0 0 0-4 0v6m0 0V6a2 2 0 0 0-4 0v8l-2-2a2 2 0 0 0-3 3l4 5a7 7 0 0 0 13-4v-5a2 2 0 0 0-4 0" },
 ];
 
 function Waveform({ active }: { active: boolean }) {
@@ -335,15 +438,16 @@ function Waveform({ active }: { active: boolean }) {
 }
 
 function Triggers({ wake }: { wake: () => void }) {
+  const t = useT();
   const [heardFrom, setHeardFrom] = useState<string | null>(null);
   const [awake, setAwake] = useState(false);
-  const t = useRef<number | undefined>(undefined);
-  useEffect(() => () => clearTimeout(t.current), []);
+  const timer = useRef<number | undefined>(undefined);
+  useEffect(() => () => clearTimeout(timer.current), []);
   return (
     <div className="rounded-2xl border border-bone/12 bg-black/25 p-5 sm:p-7">
       <div className="grid grid-cols-2 gap-3">
-        {TRIGGERS.map((x) => (
-          <button key={x.id} onClick={() => { setHeardFrom(x.label); setAwake(true); wake(); clearTimeout(t.current); t.current = window.setTimeout(() => setAwake(false), 2200); }}
+        {TRIGGERS.map((x, i) => ({ ...x, label: t.triggers[i] })).map((x) => (
+          <button key={x.id} onClick={() => { setHeardFrom(x.label); setAwake(true); wake(); clearTimeout(timer.current); timer.current = window.setTimeout(() => setAwake(false), 2200); }}
             className={`flex flex-col items-start gap-3 rounded-xl border p-4 text-left transition-colors ${heardFrom === x.label && awake ? "border-mint bg-mint/10" : "border-bone/12 hover:border-bone/40"}`}>
             <svg aria-hidden viewBox="0 0 24 24" className="size-6 fill-none stroke-mint" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round"><path d={x.icon} /></svg>
             <span className="font-medium">{x.label}</span>
@@ -354,7 +458,7 @@ function Triggers({ wake }: { wake: () => void }) {
         <Waveform active={awake} />
         <AnimatePresence mode="wait">
           <motion.p key={awake ? "on" : "off"} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="text-right text-sm text-bone/60">
-            {awake && heardFrom ? `Detectado: ${heardFrom}` : "En espera"}
+            {awake && heardFrom ? t.detected(heardFrom) : t.waiting}
           </motion.p>
         </AnimatePresence>
       </div>
@@ -364,6 +468,7 @@ function Triggers({ wake }: { wake: () => void }) {
 
 // El orbe pequeño se expande hasta llenar la pantalla.
 function ScreenTakeover() {
+  const t = useT();
   const ref = useRef<HTMLDivElement>(null);
   const mini = useRef(0.35);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end end"] });
@@ -389,14 +494,14 @@ function ScreenTakeover() {
             <BlackHole energyRef={mini} mode="mini" />
           </motion.div>
           <motion.p style={{ opacity: label }} className="absolute bottom-12 left-[19%] text-sm text-bone/70">
-            Mike espera aquí, en la esquina.
+            {t.corner}
           </motion.p>
           <motion.div style={{ clipPath: clip }} className="absolute inset-0 bg-[radial-gradient(circle_at_9%_86%,#2a1d10_0%,#070605_60%)]">
             <motion.div style={{ opacity: panel }} className="flex h-full flex-col justify-center gap-5 p-6 sm:p-12">
-              <p className="text-sm text-[#ffcf8a]">Te muestro un ejemplo</p>
-              <p className="max-w-[24ch] font-display text-[clamp(1.4rem,3vw,2.6rem)] leading-tight">Así se centra cualquier cosa con Grid.</p>
+              <p className="text-sm text-[#ffcf8a]">{t.example}</p>
+              <p className="max-w-[24ch] font-display text-[clamp(1.4rem,3vw,2.6rem)] leading-tight">{t.grid}</p>
               <pre className="max-w-md overflow-hidden rounded-lg bg-black/50 p-4 font-mono text-[0.75rem] leading-relaxed text-bone/85 sm:text-sm">
-{`.contenedor {
+{`${t.cls} {
   display: grid;
   place-items: center;
 }`}
@@ -409,24 +514,26 @@ function ScreenTakeover() {
   );
 }
 
-const AGENTS = [
-  { id: "escucha", name: "Escucha", job: "Convierte voz, aplausos y gestos en intenciones.", x: 80, y: 70 },
-  { id: "decide", name: "Decide", job: "Elige qué agente atiende cada intención.", x: 320, y: 70 },
-  { id: "ejecuta", name: "Ejecuta", job: "Abre apps y controla luces, audio y cámara.", x: 320, y: 290 },
-  { id: "recuerda", name: "Recuerda", job: "Lee y escribe notas en Obsidian para todos.", x: 80, y: 290 },
+const AGENT_SPOTS = [
+  { id: "escucha", x: 80, y: 70 },
+  { id: "decide", x: 320, y: 70 },
+  { id: "ejecuta", x: 320, y: 290 },
+  { id: "recuerda", x: 80, y: 290 },
 ];
 const NOTES = [
   { x: 168, y: 150 }, { x: 236, y: 152 }, { x: 200, y: 210 }, { x: 150, y: 214 }, { x: 252, y: 208 }, { x: 200, y: 128 },
 ];
 
 function AgentsGraph() {
+  const t = useT();
+  const AGENTS = AGENT_SPOTS.map((a, i) => ({ ...a, ...t.agents[i] }));
   const ref = useRef<SVGSVGElement>(null);
   const inView = useInView(ref, { once: true, amount: 0.5 });
   const [hover, setHover] = useState<string | null>(null);
   const shown = AGENTS.find((a) => a.id === hover);
   return (
     <div className="relative">
-      <svg ref={ref} viewBox="0 0 400 360" className="w-full" role="img" aria-label="Cuatro agentes conectados a una memoria compartida en Obsidian">
+      <svg ref={ref} viewBox="0 0 400 360" className="w-full" role="img" aria-label={t.agentsAria}>
         {NOTES.map((a, i) =>
           NOTES.slice(i + 1).map((b, j) =>
             (i + j) % 2 === 0 ? (
@@ -444,7 +551,7 @@ function AgentsGraph() {
           <motion.circle key={i} cx={n.x} cy={n.y} r={i === 2 ? 7 : 4} fill={i === 2 ? "#8fcfa5" : "#eef1ea"}
             initial={{ scale: 0 }} animate={inView ? { scale: 1 } : {}} transition={{ type: "spring", delay: 1 + i * 0.12 }} />
         ))}
-        <text x={200} y={250} textAnchor="middle" fill="#eef1ea" fillOpacity={0.55} fontSize={11}>memoria compartida</text>
+        <text x={200} y={250} textAnchor="middle" fill="#eef1ea" fillOpacity={0.55} fontSize={11}>{t.memory}</text>
         {AGENTS.map((a, i) => (
           <motion.g key={a.id} initial={{ opacity: 0, y: 10 }} animate={inView ? { opacity: 1, y: 0 } : {}} transition={{ delay: 0.1 + i * 0.15, duration: 0.6, ease }}
             onPointerEnter={() => setHover(a.id)} onPointerLeave={() => setHover(null)} onFocus={() => setHover(a.id)} onBlur={() => setHover(null)}
@@ -461,15 +568,10 @@ function AgentsGraph() {
   );
 }
 
-const DEVICES = [
-  { id: "rgb", name: "Luces RGB" },
-  { id: "mic", name: "Micrófono" },
-  { id: "bocinas", name: "Bocinas" },
-  { id: "camara", name: "Cámara" },
-  { id: "apps", name: "Apps" },
-];
+const DEVICES = ["rgb", "mic", "bocinas", "camara", "apps"];
 
 function Hardware() {
+  const t = useT();
   const [on, setOn] = useState<Record<string, boolean>>({ rgb: true, apps: true });
   return (
     <div className="rounded-2xl border border-bone/12 bg-black/25 p-5 sm:p-7">
@@ -481,7 +583,7 @@ function Hardware() {
         style={{ backgroundImage: "linear-gradient(90deg,#8fcfa5,#9ec5e8,#c6a6e6,#e8b7a6,#8fcfa5)", backgroundSize: "200% 100%", boxShadow: on.rgb ? "0 0 24px rgba(143,207,165,0.45)" : "none" }}
       />
       <ul className="grid gap-2">
-        {DEVICES.map((d) => (
+        {DEVICES.map((id, i) => ({ id, name: t.devices[i] })).map((d) => (
           <li key={d.id}>
             <button
               role="switch"
@@ -502,22 +604,14 @@ function Hardware() {
   );
 }
 
-const BOOT = [
-  "[ ok ] Sesión iniciada",
-  "[ ok ] Cargando memoria compartida (Obsidian)",
-  "[ ok ] Agente Escucha: micrófono y cámara listos",
-  "[ ok ] Agente Ejecuta: apps y dispositivos conectados",
-  "[ ok ] Agente Recuerda: notas indexadas",
-  "[ ok ] Agente Decide: en línea",
-  "Mike está listo.",
-];
-
 function Boot() {
+  const t = useT();
+  const BOOT = t.boot;
   const ref = useRef<HTMLDivElement>(null);
   const inView = useInView(ref, { once: true, amount: 0.6 });
   return (
     <div ref={ref} className="rounded-xl border border-bone/12 bg-black/40 p-5 font-mono text-[0.8rem] leading-7 sm:text-sm">
-      <p className="mb-2 text-bone/35">mike@milko-pc ~ inicio automático</p>
+      <p className="mb-2 text-bone/35">{t.bootTitle}</p>
       {BOOT.map((l, i) => (
         <motion.p key={l} initial={{ opacity: 0, x: -6 }} animate={inView ? { opacity: 1, x: 0 } : {}} transition={{ delay: 0.25 + i * 0.32, duration: 0.25 }}
           className={i === BOOT.length - 1 ? "mt-2 text-mint" : "text-bone/75"}>
@@ -528,10 +622,12 @@ function Boot() {
   );
 }
 
-export function Mike() {
-  const m = useMike();
+export function Mike({ locale }: { locale: Locale }) {
+  const t = COPY[locale];
+  const m = useMike(locale);
 
   return (
+    <T.Provider value={t}>
     <div className="bg-night text-bone">
       {/* Portada: el agujero negro llena la pantalla y la consola flota encima */}
       <section className="relative min-h-[calc(100svh-44px)] overflow-hidden bg-black">
@@ -546,38 +642,39 @@ export function Mike() {
                 Mike
               </motion.h1>
               <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.8, duration: 0.8 }} className="mt-4 max-w-[38ch] text-lg leading-relaxed text-white/65">
-                Un asistente que vive en mi PC. Aquí tiene cara de agujero negro de verdad: la luz se dobla, el disco quema y, si le hablas, contesta.
+                {t.intro}
               </motion.p>
             </div>
             <motion.div initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1, duration: 0.8, ease }}>
-              <Console m={m} />
+              <Console m={m} locale={locale} />
             </motion.div>
           </div>
         </div>
       </section>
 
-      <Chapter kicker="Activación" title="Se despierta como tú quieras" body="Mike responde a un aplauso, un chasquido, la frase “Oye, Mike” o un gesto frente a la cámara. Prueba cada uno.">
+      <Chapter kicker={t.wake[0]} title={t.wake[1]} body={t.wake[2]}>
         <Triggers wake={m.wake} />
       </Chapter>
 
       <section className="px-4 pt-10 text-center sm:px-8">
-        <p className="text-sm text-mint">Interfaz</p>
-        <h2 className="mx-auto mt-3 max-w-[20ch] font-display text-[clamp(2rem,4.2vw,3.4rem)] font-medium leading-[1.02] tracking-[-0.02em]">Un agujero negro en la esquina</h2>
-        <p className="mx-auto mt-5 max-w-[46ch] text-lg text-bone/65">Vive pequeño abajo a la izquierda. Cuando tiene algo que enseñarte, se traga la pantalla.</p>
+        <p className="text-sm text-mint">{t.ui[0]}</p>
+        <h2 className="mx-auto mt-3 max-w-[20ch] font-display text-[clamp(2rem,4.2vw,3.4rem)] font-medium leading-[1.02] tracking-[-0.02em]">{t.ui[1]}</h2>
+        <p className="mx-auto mt-5 max-w-[46ch] text-lg text-bone/65">{t.ui[2]}</p>
       </section>
       <ScreenTakeover />
 
-      <Chapter kicker="Arquitectura" title="Cuatro agentes, una memoria" body="Cada agente hace una sola cosa bien. Comparten lo que saben en una bóveda de Obsidian, así lo que uno aprende lo usan los demás." flip>
+      <Chapter kicker={t.arch[0]} title={t.arch[1]} body={t.arch[2]} flip>
         <AgentsGraph />
       </Chapter>
 
-      <Chapter kicker="Control" title="Mueve lo que tocas a diario" body="Mike abre programas y controla el hardware de la PC: luces, micrófono, bocinas y cámara. Todo con herramientas gratuitas.">
+      <Chapter kicker={t.control[0]} title={t.control[1]} body={t.control[2]}>
         <Hardware />
       </Chapter>
 
-      <Chapter kicker="Arranque" title="Se enciende con la PC" body="No hay que abrirlo. Cuando la computadora arranca, Mike carga su memoria, levanta a sus agentes y se queda esperando." flip>
+      <Chapter kicker={t.start[0]} title={t.start[1]} body={t.start[2]} flip>
         <Boot />
       </Chapter>
     </div>
+    </T.Provider>
   );
 }

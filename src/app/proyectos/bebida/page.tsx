@@ -1,15 +1,13 @@
-import type { Metadata } from "next";
-import { bySlug } from "@/data/projects";
 import { ProjectOutro } from "@/components/ProjectChrome";
 import { Bebida } from "@/experiences/bebida/Bebida";
+import { projectMetadata } from "@/lib/pages";
 
-const p = bySlug("bebida")!;
-export const metadata: Metadata = { title: p.title, description: p.summary };
+export const metadata = projectMetadata("bebida", "es");
 
 export default function Page() {
   return (
     <>
-      <main><Bebida /></main>
+      <main><Bebida locale="es" /></main>
       <ProjectOutro slug="bebida" />
     </>
   );

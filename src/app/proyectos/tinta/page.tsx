@@ -1,10 +1,8 @@
-import type { Metadata } from "next";
-import { bySlug } from "@/data/projects";
 import { ProjectOutro } from "@/components/ProjectChrome";
 import { Tinta } from "@/experiences/tinta/Tinta";
+import { projectMetadata } from "@/lib/pages";
 
-const p = bySlug("tinta")!;
-export const metadata: Metadata = { title: p.title, description: p.summary };
+export const metadata = projectMetadata("tinta", "es");
 
 export default function Page() {
   return (

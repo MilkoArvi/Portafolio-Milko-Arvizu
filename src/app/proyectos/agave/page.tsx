@@ -1,10 +1,8 @@
-import type { Metadata } from "next";
-import { bySlug } from "@/data/projects";
 import { ProjectOutro } from "@/components/ProjectChrome";
 import { AgaveNegro } from "@/experiences/agave/AgaveNegro";
+import { projectMetadata } from "@/lib/pages";
 
-const p = bySlug("agave")!;
-export const metadata: Metadata = { title: p.title, description: p.summary };
+export const metadata = projectMetadata("agave", "es");
 
 export default function Page() {
   return (

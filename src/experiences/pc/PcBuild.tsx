@@ -2,11 +2,17 @@
 
 import { AnimatePresence, motion, useMotionValueEvent, useScroll } from "motion/react";
 import { useEffect, useRef, useState } from "react";
+import type { Locale } from "@/config/site";
 
 // Bajo el vidrio templado: mi PC real, armada pieza por pieza con el scroll.
 // La escena vive en scene.ts; aquí solo está la interfaz que la acompaña.
 
-const STAGES = [
+const COPY = {
+  es: {
+    title: "Bajo el vidrio templado: mi PC armada pieza por pieza",
+    aria: "Modelo 3D de la PC de Milko armándose pieza por pieza",
+    noGL: "Tu navegador no puede mostrar el modelo 3D.",
+    stages: [
   { name: "Gabinete", spec: "Gabinete ATX con panel lateral de vidrio templado." },
   { name: "Tarjeta madre", spec: "Socket AM5, la base donde se conecta todo." },
   { name: "Procesador", spec: "AMD Ryzen 5 7600: 6 núcleos y 12 hilos bajo un IHS de níquel con las muescas de AM5." },
@@ -16,10 +22,30 @@ const STAGES = [
   { name: "Fuente de poder", spec: "Alimenta todo desde la cámara inferior; los cables suben por detrás de la placa." },
   { name: "Ventiladores y vidrio", spec: "El aire fresco entra por el frente y sale por atrás. Se cierra el vidrio." },
   { name: "Encendido", spec: "Barrido de luz y ventiladores a toda velocidad. Lista para programar, renderizar y jugar." },
-];
-const N = STAGES.length;
+    ],
+  },
+  en: {
+    title: "Under tempered glass: my PC, built piece by piece",
+    aria: "3D model of Milko's PC assembling piece by piece",
+    noGL: "Your browser can't display the 3D model.",
+    stages: [
+  { name: "Case", spec: "ATX case with a tempered glass side panel." },
+  { name: "Motherboard", spec: "AM5 socket, the base everything plugs into." },
+  { name: "Processor", spec: "AMD Ryzen 5 7600: 6 cores and 12 threads under a nickel IHS with the AM5 notches." },
+  { name: "Cooler", spec: "Radial fins and a fan on top: keeps the processor cool while it compiles." },
+  { name: "Memory", spec: "8 GB of DDR5 RAM." },
+  { name: "Graphics card", spec: "NVIDIA GeForce RTX 3060 with 12 GB of VRAM." },
+  { name: "Power supply", spec: "Feeds everything from the bottom chamber; the cables run up behind the board." },
+  { name: "Fans and glass", spec: "Cool air comes in the front and leaves out the back. The glass closes." },
+  { name: "Power on", spec: "A sweep of light and fans at full speed. Ready to code, render and play." },
+    ],
+  },
+};
+const N = COPY.es.stages.length;
 
-export function PcBuild() {
+export function PcBuild({ locale }: { locale: Locale }) {
+  const t = COPY[locale];
+  const STAGES = t.stages;
   const wrap = useRef<HTMLDivElement>(null);
   const holder = useRef<HTMLDivElement>(null);
   const progress = useRef(0);
@@ -64,8 +90,8 @@ export function PcBuild() {
   return (
     <div ref={wrap} className="relative bg-[#060807] text-bone" style={{ height: `${N * 70 + 100}vh` }}>
       <div className="sticky top-11 h-[calc(100svh-44px)] overflow-hidden">
-        <h1 className="sr-only">Bajo el vidrio templado: mi PC armada pieza por pieza</h1>
-        <div ref={holder} role="img" aria-label="Modelo 3D de la PC de Milko armándose pieza por pieza" className={`absolute inset-0 transition-opacity duration-1000 ${ready ? "opacity-100" : "opacity-0"}`} />
+        <h1 className="sr-only">{t.title}</h1>
+        <div ref={holder} role="img" aria-label={t.aria} className={`absolute inset-0 transition-opacity duration-1000 ${ready ? "opacity-100" : "opacity-0"}`} />
         {!ready && !fallback && (
           <div aria-hidden className="absolute inset-0 grid place-items-center">
             <span className="size-10 rounded-full border-2 border-mint/20 border-t-mint motion-safe:animate-[speedspin_0.9s_linear_infinite]" />
@@ -104,7 +130,7 @@ export function PcBuild() {
             </motion.div>
           </AnimatePresence>
         </div>
-        {fallback && <p role="status" className="absolute inset-x-4 top-1/2 text-center">Tu navegador no puede mostrar el modelo 3D.</p>}
+        {fallback && <p role="status" className="absolute inset-x-4 top-1/2 text-center">{t.noGL}</p>}
       </div>
     </div>
   );

@@ -4,24 +4,61 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AnimatePresence, motion, useMotionValueEvent, useScroll, useSpring, useTransform } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import { bySlug, neighbors, projects, thumbOf } from "@/data/projects";
-import { skills } from "@/data/skills";
+import { bySlug, neighbors, projectsFor, thumbOf } from "@/data/projects";
+import { skillsFor } from "@/data/skills";
+import { homeHref, projectHref, slugOf } from "@/lib/i18n";
+import { useLocale } from "@/lib/useLocale";
+import { LangSwitch } from "./Chrome";
+import { ThemeToggle } from "./Theme";
 import { SpeedLines, useGo } from "./Transition";
 
-const slugFrom = (path: string) => path.split("/")[2] ?? "";
+const COPY = {
+  es: {
+    talk: "Hablemos",
+    choose: "Elegir proyecto",
+    projects: "Proyectos",
+    close: "Cerrar",
+    pick: "Elige uno",
+    esc: "ESC para cerrar",
+    techniques: "Técnicas",
+    disciplines: "Disciplinas",
+    next: "SIGUIENTE",
+    end: "FIN DEL RECORRIDO",
+    nextOf: (label: string) => `Siguiente: ${label}`,
+  },
+  en: {
+    talk: "Let's talk",
+    choose: "Choose a project",
+    projects: "Projects",
+    close: "Close",
+    pick: "Pick one",
+    esc: "ESC to close",
+    techniques: "Techniques",
+    disciplines: "Disciplines",
+    next: "NEXT",
+    end: "END OF THE TOUR",
+    nextOf: (label: string) => `Next: ${label}`,
+  },
+};
 const springy = { type: "spring", stiffness: 420, damping: 24 } as const;
 
 // Barra fija arriba de cada proyecto: solo el camino de regreso y el contacto.
 export function ProjectBar() {
-  const p = bySlug(slugFrom(usePathname()));
+  const l = useLocale();
+  const t = COPY[l];
+  const p = bySlug(slugOf(usePathname()), l);
   const tone = p?.chrome === "light" ? "bg-paper/90 text-ink border-line" : "bg-night/90 text-bone border-bone/10";
   return (
     <div className={`sticky top-0 z-[70] flex h-11 items-center justify-between gap-4 border-b px-4 text-[0.82rem] backdrop-blur sm:px-6 ${tone}`}>
-      <Link href="/#proyectos" className="flex items-center gap-2 hover:underline hover:underline-offset-4">
+      <Link href={homeHref(l, "#proyectos")} className="flex items-center gap-2 hover:underline hover:underline-offset-4">
         <span aria-hidden className="size-1.5 rounded-full bg-mint" />
         Milko Arvizu
       </Link>
-      <Link href="/#contacto" className="hover:underline hover:underline-offset-4">Hablemos</Link>
+      <div className="flex items-center gap-3">
+        <Link href={homeHref(l, "#contacto")} className="hover:underline hover:underline-offset-4">{t.talk}</Link>
+        <ThemeToggle className="opacity-80 hover:opacity-100" />
+        <LangSwitch className="opacity-80 hover:opacity-100" />
+      </div>
     </div>
   );
 }
@@ -29,8 +66,10 @@ export function ProjectBar() {
 // Botón flotante a la derecha: abre el índice de proyectos con entrada de anime.
 export function ProjectDock() {
   const pathname = usePathname();
-  const current = slugFrom(pathname);
+  const current = slugOf(pathname);
   const go = useGo();
+  const l = useLocale();
+  const t = COPY[l];
   const [open, setOpen] = useState(false);
   const button = useRef<HTMLButtonElement>(null);
   const first = useRef<HTMLButtonElement>(null);
@@ -49,7 +88,7 @@ export function ProjectDock() {
       <motion.button
         ref={button}
         type="button"
-        aria-label="Elegir proyecto"
+        aria-label={t.choose}
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         className="group fixed right-3 top-1/2 z-[95] grid size-12 -translate-y-1/2 place-items-center rounded-full border border-mint/40 bg-night/80 text-mint shadow-[0_10px_30px_-10px_rgba(0,0,0,0.8)] backdrop-blur-md sm:right-5"
@@ -66,7 +105,7 @@ export function ProjectDock() {
             : [4, 10.5, 17].flatMap((y) => [4, 10.5, 17].map((x) => <rect key={`${x}${y}`} x={x} y={y} width="3" height="3" rx="1" />))}
         </svg>
         <span className="pointer-events-none absolute right-full mr-3 hidden whitespace-nowrap rounded-full bg-night/90 px-3 py-1 text-xs text-bone opacity-0 transition-opacity group-hover:opacity-100 sm:block">
-          Proyectos
+          {t.projects}
         </span>
       </motion.button>
 
@@ -75,7 +114,7 @@ export function ProjectDock() {
           <motion.div key="dock" className="fixed inset-0 z-[90]" initial="closed" animate="open" exit="closed">
             <motion.button
               type="button"
-              aria-label="Cerrar"
+              aria-label={t.close}
               tabIndex={-1}
               onClick={() => setOpen(false)}
               className="absolute inset-0 cursor-default bg-[#070908]/70 backdrop-blur-[3px]"
@@ -91,7 +130,7 @@ export function ProjectDock() {
             </motion.div>
 
             <motion.nav
-              aria-label="Proyectos"
+              aria-label={t.projects}
               className="absolute inset-y-3 right-3 flex w-[min(430px,calc(100vw-24px))] flex-col overflow-hidden rounded-2xl border border-bone/10 bg-[#0b0e0c] text-bone shadow-[-12px_12px_0_#8fcfa5] sm:right-20"
               variants={{
                 closed: { x: "115%", skewX: -14, transition: { duration: 0.28, ease: [0.7, 0, 0.84, 0] } },
@@ -99,11 +138,11 @@ export function ProjectDock() {
               }}
             >
               <div className="flex items-baseline justify-between border-b border-bone/10 px-5 py-4">
-                <p className="font-display text-xl font-medium">Elige uno</p>
-                <p className="font-mono text-[0.68rem] text-bone/40">ESC para cerrar</p>
+                <p className="font-display text-xl font-medium">{t.pick}</p>
+                <p className="font-mono text-[0.68rem] text-bone/40">{t.esc}</p>
               </div>
               <ul className="no-scrollbar flex-1 space-y-1.5 overflow-y-auto p-2.5">
-                {projects.map((p, i) => {
+                {projectsFor(l).map((p, i) => {
                   const here = p.slug === current;
                   return (
                     <motion.li
@@ -114,7 +153,7 @@ export function ProjectDock() {
                         ref={i === 0 ? first : undefined}
                         type="button"
                         aria-current={here ? "page" : undefined}
-                        onClick={() => { setOpen(false); if (!here) go(`/proyectos/${p.slug}`, p.title, p.accent); }}
+                        onClick={() => { setOpen(false); if (!here) go(projectHref(l, p.slug), p.title, p.accent); }}
                         whileHover={{ x: -6, rotate: -0.6, boxShadow: `6px 6px 0 ${p.accent}` }}
                         whileTap={{ scale: 0.97, x: 2 }}
                         transition={springy}
@@ -154,7 +193,7 @@ export function ProjectDock() {
 // Pista de qué hacer: solo aparece si la persona lleva un rato sin moverse.
 export function IdleHint() {
   const pathname = usePathname();
-  const p = bySlug(slugFrom(pathname));
+  const p = bySlug(slugOf(pathname), useLocale());
   const [show, setShow] = useState(false);
 
   useEffect(() => {
@@ -212,8 +251,10 @@ export function IdleHint() {
 
 // Final de cada proyecto: una ficha corta y, al seguir bajando, el siguiente proyecto.
 export function ProjectOutro({ slug }: { slug: string }) {
-  const p = bySlug(slug)!;
-  const used = skills.filter((s) => p.skills.includes(s.id)).map((s) => s.name);
+  const l = useLocale();
+  const t = COPY[l];
+  const p = bySlug(slug, l)!;
+  const used = skillsFor(l).filter((s) => p.skills.includes(s.id)).map((s) => s.name);
   return (
     <>
       <section className="relative z-[5] bg-paper text-ink">
@@ -223,8 +264,8 @@ export function ProjectOutro({ slug }: { slug: string }) {
             <p className="measure mt-5 text-lg leading-relaxed text-ink/80">{p.summary}</p>
           </div>
           <dl className="grid content-start gap-5 border-t border-line pt-5 text-[0.98rem]">
-            <div className="grid grid-cols-[7rem_1fr] gap-4"><dt className="text-muted">Técnicas</dt><dd>{p.techniques.join(", ")}</dd></div>
-            <div className="grid grid-cols-[7rem_1fr] gap-4"><dt className="text-muted">Disciplinas</dt><dd>{used.join(", ")}</dd></div>
+            <div className="grid grid-cols-[7rem_1fr] gap-4"><dt className="text-muted">{t.techniques}</dt><dd>{p.techniques.join(", ")}</dd></div>
+            <div className="grid grid-cols-[7rem_1fr] gap-4"><dt className="text-muted">{t.disciplines}</dt><dd>{used.join(", ")}</dd></div>
           </dl>
         </div>
       </section>
@@ -235,13 +276,15 @@ export function ProjectOutro({ slug }: { slug: string }) {
 
 // Al llegar al fondo, el scroll te lleva solo al siguiente proyecto.
 function NextPortal({ slug }: { slug: string }) {
-  const { next } = neighbors(slug);
+  const l = useLocale();
+  const t = COPY[l];
+  const { next } = neighbors(slug, l);
   const go = useGo();
   const ref = useRef<HTMLElement>(null);
   const armed = useRef(false);
   const fired = useRef(false);
-  const href = next ? `/proyectos/${next.slug}` : "/#contacto";
-  const label = next ? next.title : "Hablemos";
+  const href = next ? projectHref(l, next.slug) : homeHref(l, "#contacto");
+  const label = next ? next.title : t.talk;
   const accent = next ? next.accent : "#8fcfa5";
   const bg = next ? next.tone.bg : "#131814";
 
@@ -263,14 +306,14 @@ function NextPortal({ slug }: { slug: string }) {
   });
 
   return (
-    <section ref={ref} aria-label={`Siguiente: ${label}`} className="relative h-[170vh]" style={{ background: bg }}>
+    <section ref={ref} aria-label={t.nextOf(label)} className="relative h-[170vh]" style={{ background: bg }}>
       <div className="sticky top-11 flex h-[calc(100svh-44px)] items-center justify-center overflow-hidden">
         <motion.div aria-hidden style={{ opacity: lines }} className="absolute inset-0">
           <SpeedLines className="size-full motion-safe:animate-[speedspin_30s_linear_infinite]" color={accent} />
         </motion.div>
         <div aria-hidden className="absolute inset-0" style={{ background: `radial-gradient(circle at 50% 50%, transparent 0%, ${bg} 72%)` }} />
         <motion.div style={{ scale, x: shake }} className="relative px-6 text-center">
-          <p className="font-mono text-xs tracking-[0.3em]" style={{ color: accent }}>{next ? "SIGUIENTE" : "FIN DEL RECORRIDO"}</p>
+          <p className="font-mono text-xs tracking-[0.3em]" style={{ color: accent }}>{next ? t.next : t.end}</p>
           <Link
             href={href}
             onClick={(e) => { e.preventDefault(); go(href, label, accent); }}

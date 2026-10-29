@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { motion, useMotionValue, useScroll, useSpring, useTransform } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import { projects, thumbOf, type Project } from "@/data/projects";
+import { projectsFor, thumbOf, type Project } from "@/data/projects";
+import { projectHref } from "@/lib/i18n";
+import { useLocale } from "@/lib/useLocale";
 import { useGo } from "./Transition";
 
 // La tira de contactos: los 8 proyectos como cuadros de una película.
@@ -28,6 +30,7 @@ function Sprockets() {
 
 function Frame({ p, i }: { p: Project; i: number }) {
   const go = useGo();
+  const href = projectHref(useLocale(), p.slug);
   const [hasImg, setHasImg] = useState(true);
   const [loupe, setLoupe] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
   const src = thumbOf(p);
@@ -35,8 +38,8 @@ function Frame({ p, i }: { p: Project; i: number }) {
 
   return (
     <Link
-      href={`/proyectos/${p.slug}`}
-      onClick={(e) => { e.preventDefault(); go(`/proyectos/${p.slug}`, p.title, p.accent); }}
+      href={href}
+      onClick={(e) => { e.preventDefault(); go(href, p.title, p.accent); }}
       className="group block w-[78vw] max-w-[380px] shrink-0 snap-start outline-none sm:w-[360px]"
       aria-label={`${p.title}: ${p.pitch}`}
     >
@@ -86,7 +89,14 @@ function Frame({ p, i }: { p: Project; i: number }) {
   );
 }
 
+const COPY = {
+  es: { title: "Hoja de contactos", body: "Ocho proyectos revelados en el mismo rollo. Pasa el cursor por un cuadro para verlo con lupa." },
+  en: { title: "Contact sheet", body: "Eight projects developed on the same roll. Hover over a frame to see it through a loupe." },
+};
+
 export function ProofStrip() {
+  const l = useLocale();
+  const t = COPY[l];
   const section = useRef<HTMLElement>(null);
   const track = useRef<HTMLDivElement>(null);
   const [desktop, setDesktop] = useState(false);
@@ -119,10 +129,8 @@ export function ProofStrip() {
     >
       <div className={desktop ? "sticky top-0 flex h-screen flex-col justify-center overflow-hidden" : "py-16"}>
         <div className="mx-auto mb-8 flex w-full max-w-[1440px] flex-col gap-3 px-4 sm:flex-row sm:items-end sm:justify-between sm:px-8">
-          <h2 className="font-display text-[clamp(2rem,4.4vw,3.6rem)] font-medium leading-none tracking-[-0.02em]">Hoja de contactos</h2>
-          <p className="max-w-[44ch] text-bone/60">
-            Ocho proyectos revelados en el mismo rollo. Pasa el cursor por un cuadro para verlo con lupa.
-          </p>
+          <h2 className="font-display text-[clamp(2rem,4.4vw,3.6rem)] font-medium leading-none tracking-[-0.02em]">{t.title}</h2>
+          <p className="max-w-[44ch] text-bone/60">{t.body}</p>
         </div>
 
         <div className="border-y border-bone/10 bg-[#0e120f]">
@@ -132,7 +140,7 @@ export function ProofStrip() {
             style={{ x: desktop ? x : still }}
             className={`flex gap-6 px-4 py-4 sm:gap-8 sm:px-8 ${desktop ? "w-max" : "no-scrollbar snap-x snap-mandatory overflow-x-auto"}`}
           >
-            {projects.map((p, i) => (
+            {projectsFor(l).map((p, i) => (
               <Frame key={p.slug} p={p} i={i} />
             ))}
             <div aria-hidden className="w-2 shrink-0" />

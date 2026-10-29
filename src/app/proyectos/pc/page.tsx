@@ -1,15 +1,13 @@
-import type { Metadata } from "next";
-import { bySlug } from "@/data/projects";
 import { ProjectOutro } from "@/components/ProjectChrome";
 import { PcBuild } from "@/experiences/pc/PcBuild";
+import { projectMetadata } from "@/lib/pages";
 
-const p = bySlug("pc")!;
-export const metadata: Metadata = { title: p.title, description: p.summary };
+export const metadata = projectMetadata("pc", "es");
 
 export default function Page() {
   return (
     <>
-      <main><PcBuild /></main>
+      <main><PcBuild locale="es" /></main>
       <ProjectOutro slug="pc" />
     </>
   );

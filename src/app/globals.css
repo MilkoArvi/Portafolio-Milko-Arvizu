@@ -17,6 +17,34 @@
   --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
 }
 
+/* Modo oscuro: solo cambian los tonos del papel. Las secciones de noche (portada, contacto)
+   y las experiencias tienen su propia dirección de arte y se quedan igual. */
+:root { color-scheme: light; }
+:root[data-theme="dark"] {
+  --color-paper: #0f1311;
+  --color-paper-2: #151b17;
+  --color-ink: #e6e9e2;
+  --color-muted: #99a39b;
+  --color-line: #2a332d;
+  --color-mint-deep: #8fcfa5;
+  color-scheme: dark;
+}
+/* sin JavaScript manda la preferencia del sistema */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --color-paper: #0f1311;
+    --color-paper-2: #151b17;
+    --color-ink: #e6e9e2;
+    --color-muted: #99a39b;
+    --color-line: #2a332d;
+    --color-mint-deep: #8fcfa5;
+    color-scheme: dark;
+  }
+}
+/* el cambio de tema se abre en círculo desde el botón (la animación la pone Theme.tsx) */
+::view-transition-old(root),
+::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+
 html {
   -webkit-text-size-adjust: 100%;
   scroll-behavior: smooth;
@@ -31,7 +59,7 @@ body {
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
 }
-::selection { background: var(--color-mint); color: var(--color-ink); }
+::selection { background: var(--color-mint); color: #0b0e0c; }
 :focus-visible {
   outline: 2px solid var(--color-mint-deep);
   outline-offset: 3px;

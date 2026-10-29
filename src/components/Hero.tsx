@@ -2,12 +2,33 @@
 
 import { motion } from "motion/react";
 import { profile } from "@/data/profile";
+import { useLocale } from "@/lib/useLocale";
 import { FaceDots } from "./FaceDots";
 
 const TOOLS = ["React", "Next.js", "TypeScript", "Motion", "Three.js", "GLSL", "Unity", "C#", "Figma", "Python"];
 const ease = [0.16, 1, 0.3, 1] as const;
 
+const COPY = {
+  es: {
+    title: "front-end creativo que lleva productos de la idea al lanzamiento.",
+    body: "Hoy construyo interfaces en XRBS y dirijo la programación de Punk Cowboy, mi propio videojuego. Diseño, programo y animo, y casi nunca en ese orden.",
+    projects: "Ver los 8 proyectos",
+    talk: "Hablemos",
+    tools: "Trabajo con",
+    country: "México",
+  },
+  en: {
+    title: "creative front-end developer taking products from idea to launch.",
+    body: "Today I build interfaces at XRBS and lead programming on Punk Cowboy, my own video game. I design, code and animate, and almost never in that order.",
+    projects: "See all 8 projects",
+    talk: "Let's talk",
+    tools: "I work with",
+    country: "Mexico",
+  },
+};
+
 export function Hero() {
+  const t = COPY[useLocale()];
   return (
     <section className="relative overflow-hidden bg-night text-bone">
       {/* cuadrícula muy tenue, como papel milimétrico */}
@@ -33,7 +54,7 @@ export function Hero() {
           >
             <span className="text-bone/45">{profile.name},</span>
             <br />
-            front-end creativo que lleva productos de la idea al lanzamiento.
+            {t.title}
           </motion.h1>
           <motion.p
             initial={{ opacity: 0 }}
@@ -41,7 +62,7 @@ export function Hero() {
             transition={{ duration: 0.8, delay: 0.7 }}
             className="mt-6 max-w-[42ch] text-[1.02rem] leading-relaxed text-bone/70 sm:text-lg"
           >
-            Hoy construyo interfaces en XRBS y dirijo la programación de Punk Cowboy, mi propio videojuego. Diseño, programo y animo, y casi nunca en ese orden.
+            {t.body}
           </motion.p>
           <motion.div
             initial={{ opacity: 0, y: 12 }}
@@ -50,22 +71,22 @@ export function Hero() {
             className="mt-8 flex flex-wrap gap-3"
           >
             <a href="#proyectos" className="rounded-full bg-mint px-6 py-3 font-semibold text-night transition-colors hover:bg-bone">
-              Ver los 8 proyectos
+              {t.projects}
             </a>
             <a href="#contacto" className="rounded-full border border-bone/25 px-6 py-3 font-semibold transition-colors hover:border-bone">
-              Hablemos
+              {t.talk}
             </a>
           </motion.div>
         </div>
 
         <div className="relative z-10 flex flex-col gap-4 border-t border-bone/12 py-5 text-[0.82rem] sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-            <span className="text-bone/45">Trabajo con</span>
+            <span className="text-bone/45">{t.tools}</span>
             {TOOLS.map((t) => (
               <span key={t} className="text-bone/80">{t}</span>
             ))}
           </div>
-          <span className="text-bone/45">{profile.location}, México</span>
+          <span className="text-bone/45">{profile.location}, {t.country}</span>
         </div>
       </div>
     </section>

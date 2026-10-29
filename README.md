@@ -1,6 +1,7 @@
 # Portafolio Milko Arvizu
 
 Portafolio de front-end creativo: UI/UX, diseño web, front-end, motion, 3D y WebGL, videojuegos e IA aplicada.
+En español (`/`) y en inglés (`/en`), con modo claro y oscuro.
 Ocho proyectos presentados como una hoja de contactos fotográfica. Se recorren con scroll: al llegar al final de uno, el siguiente entra solo.
 
 **Stack:** Next.js 16, React 19, TypeScript, Tailwind CSS 4, Motion y Three.js.
@@ -23,11 +24,12 @@ npm run build   # verifica que todo compile
 | Disciplinas: qué hago, especialidades y práctica | `src/data/skills.ts` |
 | Miniaturas de la hoja de contactos | `public/proof/<slug>.webp` (960 × 660), o el campo `thumb` del proyecto |
 | Pista que aparece si alguien se queda quieto | campo `hint` de cada proyecto en `src/data/projects.ts` |
-| Lo que Mike sabe contestar | `src/experiences/mike/brain.ts` |
+| Lo que Mike sabe contestar | `src/experiences/mike/brain.ts` (un guion en español y otro en inglés) |
+| Colores del modo oscuro | `src/app/globals.css`, bloque `:root[data-theme="dark"]` |
 
 ## Los 8 proyectos
 
-| Proyecto | Ruta | Técnica |
+| Proyecto | Ruta (en inglés: `/en/projects/<slug>`) | Técnica |
 |---|---|---|
 | Mike, horizonte de sucesos | `/proyectos/mike` | Agujero negro trazado por píxel en GLSL (lente gravitacional, Doppler), voz con Web Speech API |
 | Autorretrato compilado | `/proyectos/rostro` | Canvas 2D con atlas de glifos: el código se acomoda hasta formar mi cara |
@@ -38,9 +40,18 @@ npm run build   # verifica que todo compile
 | Calma, a 360° | `/proyectos/bebida` | Three.js, lata generada con torno, tinta metálica bajo barniz, condensación en shader (neblina, gotas que se deslizan y caen), scroll 3D |
 | Bajo el vidrio templado | `/proyectos/pc` | Three.js con MSAA, piso con reflejo real, bloom y materiales físicos; ensamblado por etapas y encendido |
 
+## Idiomas y modo oscuro
+
+- **Español** vive en `/` y `/proyectos/<slug>`; **inglés** en `/en` y `/en/projects/<slug>`. El botón ES/EN de la barra lleva a la misma página en el otro idioma.
+- Cada texto tiene su versión en los dos idiomas junto al original: los datos en `src/data/*.ts` y cada componente en su objeto `COPY`.
+- Las rutas se arman con `src/lib/i18n.ts`; los componentes saben su idioma por la URL con `useLocale()`.
+- La lata de Calma sigue impresa en español en las dos versiones: es una marca mexicana.
+- El modo oscuro sigue al sistema hasta que alguien elige uno con el botón; la elección se guarda en el navegador. Un script en `<head>` lo aplica antes de pintar, así no hay destello.
+- Solo cambian los tonos del papel; la portada, el contacto y las experiencias tienen su propia dirección de arte.
+
 ## Mike y el micrófono
 
-Mike pide permiso del micrófono cuando tocas su botón. El reconocimiento de voz lo hace el navegador
+Mike pide permiso del micrófono cuando tocas su botón y escucha en el idioma de la página. El reconocimiento de voz lo hace el navegador
 (Chrome, Edge y Safari lo traen; Opera, Brave y Firefox no). Si no hay reconocimiento, se le puede escribir
 y contesta en voz alta igual. Sus respuestas son un guion local: si le preguntan algo muy grande,
 contesta que su objetivo es mostrar una pequeña parte de su enorme mundo.

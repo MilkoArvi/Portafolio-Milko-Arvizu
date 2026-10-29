@@ -3,12 +3,13 @@
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { usePathname, useRouter } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { useLocale } from "@/lib/useLocale";
 
 // Cambio de proyecto con cortinilla de anime: franjas diagonales que entran de golpe,
 // líneas de velocidad y el nombre del destino al centro, como una tarjeta de episodio.
 // Vive en el layout raíz, así sobrevive a la navegación y puede abrir el telón en la página nueva.
 
-type Go = (href: string, label?: string, color?: string) => void;
+type Go = (href: string, label?: string, color?: string, kicker?: string) => void;
 const GoCtx = createContext<Go>(() => {});
 export const useGo = () => useContext(GoCtx);
 
@@ -37,8 +38,9 @@ export function TransitionProvider({ children }: { children: React.ReactNode }) 
   const router = useRouter();
   const pathname = usePathname();
   const reduce = useReducedMotion();
+  const l = useLocale();
   const [phase, setPhase] = useState<Phase>("idle");
-  const [card, setCard] = useState({ label: "", color: "#8fcfa5" });
+  const [card, setCard] = useState({ label: "", color: "#8fcfa5", kicker: "" });
   const phaseRef = useRef<Phase>("idle");
   const target = useRef<string | null>(null);
   const origin = useRef(pathname);
@@ -46,14 +48,14 @@ export function TransitionProvider({ children }: { children: React.ReactNode }) 
 
   const set = (p: Phase) => { phaseRef.current = p; setPhase(p); };
 
-  const go = useCallback<Go>((href, label = "", color = "#8fcfa5") => {
+  const go = useCallback<Go>((href, label = "", color = "#8fcfa5", kicker = "") => {
     if (phaseRef.current !== "idle") return;
     const dest = href.split("#")[0] || "/";
     if (dest === window.location.pathname && !href.includes("#")) return;
     router.prefetch(dest);
     target.current = href;
     origin.current = window.location.pathname;
-    setCard({ label, color });
+    setCard({ label, color, kicker });
     set("cover");
   }, [router]);
 
@@ -125,7 +127,7 @@ export function TransitionProvider({ children }: { children: React.ReactNode }) 
                   <SpeedLines className="absolute inset-0 size-full animate-[spin_9s_linear_infinite] opacity-25" color={card.color} />
                   {card.label && (
                     <div className="relative px-6 text-center">
-                      <p className="font-mono text-xs tracking-[0.3em] text-[#eef1ea]/60">SIGUIENTE</p>
+                      <p className="font-mono text-xs tracking-[0.3em] text-[#eef1ea]/60">{card.kicker || (l === "en" ? "NEXT" : "SIGUIENTE")}</p>
                       <p
                         className="mt-3 max-w-[16ch] font-display text-[clamp(2.4rem,7vw,6rem)] font-semibold italic leading-[0.92] tracking-[-0.03em] text-[#eef1ea]"
                         style={{ textShadow: `5px 5px 0 #0b0e0c, 8px 8px 0 ${card.color}` }}

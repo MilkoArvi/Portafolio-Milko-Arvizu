@@ -3,6 +3,12 @@
 import { useScroll } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { getFacePoints, FACE_GRID } from "@/lib/face";
+import type { Locale } from "@/config/site";
+
+const COPY = {
+  es: { aria: "Fragmentos de código que se acomodan hasta formar la cara de Milko", code: "Esto es código.", slow: "Baja despacio.", face: "Y esto también.", hover: "Mueve el cursor sobre la cara." },
+  en: { aria: "Code fragments settling into Milko's face", code: "This is code.", slow: "Scroll slowly.", face: "So is this.", hover: "Move your cursor over the face." },
+};
 
 // Rostro en código. Arriba: un archivo de código como en el editor.
 // Al bajar, cada carácter viaja a su lugar y juntos forman mi cara.
@@ -44,7 +50,8 @@ const MINT = "#8fcfa5";
 const BONE = "#eef1ea";
 const CODE_COLOR = "#7f8a82";
 
-export function Rostro() {
+export function Rostro({ locale }: { locale: Locale }) {
+  const t = COPY[locale];
   const wrap = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const progressRef = useRef(0);
@@ -205,14 +212,14 @@ export function Rostro() {
   return (
     <div ref={wrap} className="relative h-[320vh] bg-night text-bone">
       <div className="sticky top-11 h-[calc(100svh-44px)] overflow-hidden">
-        <canvas ref={canvasRef} aria-label="Fragmentos de código que se acomodan hasta formar la cara de Milko" role="img" className="absolute inset-0 size-full" />
+        <canvas ref={canvasRef} aria-label={t.aria} role="img" className="absolute inset-0 size-full" />
         <div className={`pointer-events-none absolute inset-x-0 bottom-6 px-4 text-center transition-opacity duration-500 ${label === "code" ? "opacity-100" : "opacity-0"}`}>
-          <p className="font-display text-2xl sm:text-3xl">Esto es código.</p>
-          <p className="mt-1 text-sm text-bone/55">Baja despacio.</p>
+          <p className="font-display text-2xl sm:text-3xl">{t.code}</p>
+          <p className="mt-1 text-sm text-bone/55">{t.slow}</p>
         </div>
         <div className={`pointer-events-none absolute inset-x-0 bottom-6 px-4 text-center transition-opacity duration-500 ${label === "face" ? "opacity-100" : "opacity-0"}`}>
-          <p className="font-display text-2xl sm:text-3xl">Y esto también.</p>
-          <p className="mt-1 text-sm text-bone/55">Mueve el cursor sobre la cara.</p>
+          <p className="font-display text-2xl sm:text-3xl">{t.face}</p>
+          <p className="mt-1 text-sm text-bone/55">{t.hover}</p>
         </div>
       </div>
     </div>

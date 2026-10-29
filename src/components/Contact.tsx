@@ -2,11 +2,13 @@
 
 import { AnimatePresence, motion, useInView, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode, type RefObject } from "react";
-import { profile, socials, type Social } from "@/data/profile";
+import type { Locale } from "@/config/site";
+import { profile, socialsFor, type Social } from "@/data/profile";
+import { useLocale } from "@/lib/useLocale";
 import { LocalTime } from "./Chrome";
 import { SOCIAL_ICON } from "./Icons";
 
-// Contacto, el final del recorrido. Llegas y hay una pared de bloques que dice HOLA en pixel art;
+// Contacto, el final del recorrido. Llegas y hay una pared de bloques que dice HOLA (o HELLO) en pixel art;
 // se abre desde la costura del centro hacia los lados, como un telón, bloque por bloque.
 // Detrás están el correo y las redes, cada una en un bloque que se levanta al pasar y se hunde al picarle.
 
@@ -15,6 +17,39 @@ const GLYPHS: Record<string, string[]> = {
   O: ["01110", "10001", "10001", "10001", "10001", "10001", "01110"],
   L: ["10000", "10000", "10000", "10000", "10000", "10000", "11111"],
   A: ["01110", "10001", "10001", "11111", "10001", "10001", "10001"],
+  E: ["11111", "10000", "10000", "11110", "10000", "10000", "11111"],
+  I: ["11111", "00100", "00100", "00100", "00100", "00100", "11111"],
+};
+// lo que dice la pared: en una línea si cabe, si no en dos, y si ni así, la versión corta
+const WALL: Record<Locale, string[][]> = {
+  es: [["HOLA"], ["HO", "LA"]],
+  en: [["HELLO"], ["HEL", "LO"], ["HI"]],
+};
+const wide = (lines: string[]) => Math.max(...lines.map((w) => w.length * 6 - 1));
+
+const COPY = {
+  es: {
+    kicker: "CONTACTO",
+    a: "¿Tienes una idea que necesita moverse?",
+    b: "Construyámosla pieza por pieza.",
+    body: "Trabajo con equipos de producto, agencias y marcas, en español o en inglés. Respondo en menos de un día.",
+    copy: "Copiar correo",
+    copied: "¡Copiado!",
+    rebuild: "ARMAR LA PARED OTRA VEZ",
+    country: "México",
+    made: "Diseñado y programado a mano en",
+  },
+  en: {
+    kicker: "CONTACT",
+    a: "Got an idea that needs to move?",
+    b: "Let's build it brick by brick.",
+    body: "I work with product teams, agencies and brands, in Spanish or English. I reply within a day.",
+    copy: "Copy email",
+    copied: "Copied!",
+    rebuild: "BUILD THE WALL AGAIN",
+    country: "Mexico",
+    made: "Designed and coded by hand in",
+  },
 };
 const BASE = ["#131814", "#161d18", "#1b221d", "#111512", "#18201a"];
 const INK = ["#8fcfa5", "#86c79c", "#9ad6ae"];
@@ -41,14 +76,15 @@ const BURST = Array.from({ length: 12 }, (_, i) => {
 
 type Phase = "wall" | "open" | "build";
 
-function useGrid(host: RefObject<HTMLElement | null>) {
+function useGrid(host: RefObject<HTMLElement | null>, word: number) {
   const [g, setG] = useState<{ cols: number; rows: number; size: number; view: number } | null>(null);
   useEffect(() => {
     const el = host.current;
     if (!el) return;
     const measure = () => {
       const w = el.clientWidth, h = el.clientHeight;
-      const size = Math.round(Math.min(52, Math.max(26, w / 30)));
+      // bloques más chicos si la palabra es larga, para que quepa con margen
+      const size = Math.round(Math.min(52, Math.max(26, w / Math.max(30, word + 8))));
       const rows = Math.ceil(h / size);
       setG((o) => (o && o.size === size && o.rows === rows && o.cols === Math.ceil(w / size) ? o : { cols: Math.ceil(w / size), rows, size, view: Math.min(rows, Math.floor(window.innerHeight / size)) }));
     };
@@ -56,17 +92,17 @@ function useGrid(host: RefObject<HTMLElement | null>) {
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [host]);
+  }, [host, word]);
   return g;
 }
 
-function Mosaic({ host, phase }: { host: RefObject<HTMLElement | null>; phase: Phase }) {
-  const g = useGrid(host);
+function Mosaic({ host, phase, locale }: { host: RefObject<HTMLElement | null>; phase: Phase; locale: Locale }) {
+  const g = useGrid(host, wide(WALL[locale][0]));
   const tiles = useMemo(() => {
     if (!g) return [];
     const { cols, rows, view } = g;
-    // HOLA en una línea si cabe; en pantallas angostas, HO arriba y LA abajo
-    const lines = cols >= 27 ? ["HOLA"] : ["HO", "LA"];
+    const options = WALL[locale];
+    const lines = options.find((o) => wide(o) + 2 <= cols) ?? options[options.length - 1];
     const lit = new Set<string>();
     const top = Math.max(1, Math.floor(view / 2 - (lines.length * 8 - 1) / 2));
     lines.forEach((line, li) => {
@@ -93,7 +129,7 @@ function Mosaic({ host, phase }: { host: RefObject<HTMLElement | null>; phase: P
       });
     }
     return out;
-  }, [g]);
+  }, [g, locale]);
 
   if (!g) return null;
   return (
@@ -144,6 +180,7 @@ function PixelHeart() {
 }
 
 function CopyEmail({ email }: { email: string }) {
+  const t = COPY[useLocale()];
   const [copied, setCopied] = useState(0);
   useEffect(() => {
     if (!copied) return;
@@ -164,7 +201,7 @@ function CopyEmail({ email }: { email: string }) {
       onClick={copy}
       className="relative rounded-full border border-bone/25 px-5 py-2.5 text-[0.95rem] font-semibold transition-colors hover:border-mint hover:text-mint"
     >
-      <span aria-live="polite">{copied ? "¡Copiado!" : "Copiar correo"}</span>
+      <span aria-live="polite">{copied ? t.copied : t.copy}</span>
       <AnimatePresence>
         {copied > 0 && (
           <span key={copied} aria-hidden className="pointer-events-none absolute inset-0">
@@ -236,6 +273,8 @@ function SocialBrick({ s, i, show }: { s: Social; i: number; show: boolean }) {
 }
 
 export function Contact() {
+  const l = useLocale();
+  const t = COPY[l];
   const ref = useRef<HTMLElement>(null);
   const reduce = useReducedMotion();
   const inView = useInView(ref, { amount: 0.3 });
@@ -279,14 +318,14 @@ export function Contact() {
       <div className="relative mx-auto max-w-[1440px] px-4 pb-16 pt-24 sm:px-8 sm:pb-20 sm:pt-32">
         <motion.p {...fade(0)} className="flex items-center gap-3 font-mono text-xs tracking-[0.3em] text-mint">
           <PixelHeart />
-          CONTACTO
+          {t.kicker}
         </motion.p>
         <h2 className="mt-6 max-w-[18ch] font-display text-[clamp(2.4rem,6.4vw,5.8rem)] font-medium leading-[0.98] tracking-[-0.035em]">
-          <Wipe show={show} delay={0.15}>¿Tienes una idea que necesita moverse?</Wipe>
-          <Wipe show={show} delay={0.4} className="text-mint">Construyámosla pieza por pieza.</Wipe>
+          <Wipe show={show} delay={0.15}>{t.a}</Wipe>
+          <Wipe show={show} delay={0.4} className="text-mint">{t.b}</Wipe>
         </h2>
         <motion.p {...fade(0.55)} className="mt-7 max-w-[48ch] text-lg leading-relaxed text-bone/65">
-          Trabajo con equipos de producto, agencias y marcas, en español o en inglés. Respondo en menos de un día.
+          {t.body}
         </motion.p>
 
         {profile.email && (
@@ -302,16 +341,16 @@ export function Contact() {
         )}
 
         <ul className="mt-16 grid gap-x-5 gap-y-10 sm:grid-cols-2 lg:grid-cols-4">
-          {socials.map((s, i) => <SocialBrick key={s.id} s={s} i={i} show={show} />)}
+          {socialsFor(l).map((s, i) => <SocialBrick key={s.id} s={s} i={i} show={show} />)}
         </ul>
 
         <motion.div {...fade(1)} className="mt-16 flex flex-wrap items-center justify-between gap-4 text-sm text-bone/50">
           <p>
-            <LocalTime />, {profile.location.split(",")[1]?.trim()}, México
+            <LocalTime />, {profile.location.split(",")[1]?.trim()}, {t.country}
           </p>
           {!reduce && (
             <button type="button" onClick={rebuild} disabled={phase !== "open"} className="font-mono text-xs tracking-[0.2em] transition-colors hover:text-mint disabled:opacity-40">
-              ARMAR LA PARED OTRA VEZ
+              {t.rebuild}
             </button>
           )}
         </motion.div>
@@ -320,11 +359,11 @@ export function Contact() {
       <footer className="relative border-t border-bone/10">
         <div className="mx-auto flex max-w-[1440px] flex-col gap-2 px-4 py-6 text-sm text-bone/45 sm:flex-row sm:justify-between sm:px-8">
           <p suppressHydrationWarning>© {new Date().getFullYear()} {profile.name}</p>
-          <p>Diseñado y programado a mano en {profile.location}.</p>
+          <p>{t.made} {profile.location}.</p>
         </div>
       </footer>
 
-      {!reduce && !settled && <Mosaic host={ref} phase={phase} />}
+      {!reduce && !settled && <Mosaic host={ref} phase={phase} locale={l} />}
     </section>
   );
 }

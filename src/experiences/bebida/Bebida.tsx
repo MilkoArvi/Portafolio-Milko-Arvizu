@@ -2,6 +2,7 @@
 
 import { motion, useMotionValueEvent, useScroll, useTransform } from "motion/react";
 import { useEffect, useRef, useState } from "react";
+import type { Locale } from "@/config/site";
 import { createProgram, fullscreenTriangle, getGL, loop, mountCanvas, prefersReducedMotion, releaseCanvas, VERT, fitCanvas } from "@/lib/gl";
 import { FLAVORS, WATER } from "./label";
 import { JUICE_FRAG } from "./juice";
@@ -9,11 +10,28 @@ import { JUICE_FRAG } from "./juice";
 // Calma: una lata 3D que gira, se voltea y cambia de sabor con el scroll.
 // Detrás está el jugo de cada sabor, con burbujas y luz; Three.js solo se descarga en esta página.
 
-const SECTIONS = [
-  { big: "CALMA", title: "Agua botánica con gas", body: "Una marca inventada para mostrar scroll en 3D. Tres sabores, cero azúcar añadida y una lata que se deja ver por todos lados." },
-  ...FLAVORS.map((f) => ({ big: f.short, title: f.name, body: f.notes })),
-  { big: "SALUD", title: "Pruébalas las tres", body: "Todo lo que ves, incluida la etiqueta y las gotas de la lata, está hecho con código." },
-];
+const COPY = {
+  es: {
+    sections: [
+      { big: "CALMA", title: "Agua botánica con gas", body: "Una marca inventada para mostrar scroll en 3D. Tres sabores, cero azúcar añadida y una lata que se deja ver por todos lados." },
+      ...FLAVORS.map((f) => ({ big: f.short, title: f.name, body: f.notes })),
+      { big: "SALUD", title: "Pruébalas las tres", body: "Todo lo que ves, incluida la etiqueta y las gotas de la lata, está hecho con código." },
+    ],
+    flavor: (i: number) => `Sabor ${i} de 3`,
+    can: "Lata de Calma en 3D; arrástrala para girarla",
+    noGL: "Tu navegador no puede mostrar la lata en 3D.",
+  },
+  en: {
+    sections: [
+      { big: "CALMA", title: "Botanical sparkling water", body: "A made-up brand to show off 3D scroll. Three flavors, zero added sugar and a can you can look at from every side." },
+      ...FLAVORS.map((f) => ({ big: f.en.short, title: f.en.name, body: f.en.notes })),
+      { big: "CHEERS", title: "Try all three", body: "Everything you see, including the label and the drops on the can, is made with code." },
+    ],
+    flavor: (i: number) => `Flavor ${i} of 3`,
+    can: "3D Calma can; drag it to spin it",
+    noGL: "Your browser can't display the 3D can.",
+  },
+};
 const PALETTES = [WATER, ...FLAVORS.map((f) => f.juice), WATER];
 const DARK = "#2a2522";
 
@@ -23,7 +41,9 @@ const rgb = (hex: string) => {
 };
 const PAL = PALETTES.map((p) => p.map(rgb));
 
-export function Bebida() {
+export function Bebida({ locale }: { locale: Locale }) {
+  const t = COPY[locale];
+  const SECTIONS = t.sections;
   const wrap = useRef<HTMLDivElement>(null);
   const juiceHost = useRef<HTMLDivElement>(null);
   const canHost = useRef<HTMLDivElement>(null);
@@ -119,13 +139,14 @@ export function Bebida() {
             animate={{ opacity: section === i ? 1 : 0, y: section === i ? 0 : section > i ? -60 : 60 }}
             transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
             className={`pointer-events-none absolute inset-x-0 top-1/2 -translate-y-1/2 select-none text-center font-display font-extrabold leading-none tracking-[-0.05em] ${i >= 1 && i <= 3 ? "text-white/20" : "text-white/70"}`}
-            style={{ fontSize: "clamp(5rem, 23vw, 22rem)" }}
+            // las palabras largas (GRAPEFRUIT) bajan de tamaño para no salirse tanto
+            style={{ fontSize: `clamp(4rem, ${Math.min(23, 160 / s.big.length).toFixed(1)}vw, 22rem)` }}
           >
             {s.big}
           </motion.p>
         ))}
 
-        <div ref={canHost} className={`absolute inset-0 transition-opacity duration-700 ${ready ? "opacity-100" : "opacity-0"}`} aria-label="Lata de Calma en 3D; arrástrala para girarla" role="img" />
+        <div ref={canHost} className={`absolute inset-0 transition-opacity duration-700 ${ready ? "opacity-100" : "opacity-0"}`} aria-label={t.can} role="img" />
 
         {/* Texto de cada sección */}
         <div className="pointer-events-none absolute inset-x-0 bottom-0 p-5 transition-colors duration-700 sm:bottom-auto sm:top-1/2 sm:-translate-y-1/2 sm:p-10" style={{ color: ink, textShadow: onJuice ? "0 1px 14px rgba(0,0,0,0.28)" : "none" }}>
@@ -139,14 +160,14 @@ export function Bebida() {
                 transition={{ duration: 0.5 }}
                 className={`absolute bottom-5 max-w-[30ch] rounded-2xl p-5 backdrop-blur-md sm:static sm:bottom-auto sm:bg-transparent sm:p-0 sm:backdrop-blur-none ${onJuice ? "bg-black/25" : "bg-white/45"} ${section === i ? "" : "sm:hidden"} ${right ? "left-5 sm:ml-auto sm:mr-[4vw] sm:text-right" : "left-5 sm:ml-[4vw]"}`}
               >
-                <p className="text-sm opacity-75">{i === 0 || i === 4 ? "Calma" : `Sabor ${i} de 3`}</p>
+                <p className="text-sm opacity-75">{i === 0 || i === 4 ? "Calma" : t.flavor(i)}</p>
                 <h2 className="mt-1 font-display text-[clamp(1.6rem,3vw,2.6rem)] font-semibold leading-[1.05] tracking-[-0.02em]">{s.title}</h2>
                 <p className="mt-3 leading-relaxed opacity-85">{s.body}</p>
               </motion.div>
             );
           })}
         </div>
-        {fallback && <p role="status" className="absolute inset-x-4 top-1/2 text-center">Tu navegador no puede mostrar la lata en 3D.</p>}
+        {fallback && <p role="status" className="absolute inset-x-4 top-1/2 text-center">{t.noGL}</p>}
       </div>
     </motion.div>
   );

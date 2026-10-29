@@ -48,7 +48,7 @@ void main() {
   float c2 = 1.0 - abs(vnoise(cq * 1.8 + 4.0 + t * 0.15) * 2.0 - 1.0);
   col += mix(u_top, vec3(1.0), 0.4) * (pow(c1, 9.0) + pow(c2, 12.0) * 0.6) * 0.11 * smoothstep(0.3, 1.0, uv.y);
 
-  // burbujas: las lejanas son pequeñas y suaves, las cercanas grandes y nítidas
+  // burbujas fuera de foco, como detrás de un producto fotografiado con poca profundidad de campo
   for (int l = 0; l < 4; l++) {
     float fl = float(l) / 3.0;
     float scale = mix(30.0, 7.5, fl);
@@ -64,13 +64,13 @@ void main() {
       c.x += sin(t * (1.4 + h * 2.0) + h * 40.0) * 0.07;
       vec2 d = f - c;
       float dist = length(d);
-      float soft = mix(0.35, 0.06, fl) * r + fwidth(dist) * 1.2;
+      float soft = mix(0.42, 0.3, fl) * r + fwidth(dist) * 1.2;
       float inside = 1.0 - smoothstep(r - soft, r, dist);
       float rim = inside * smoothstep(r * 0.5, r, dist);
-      float hl = 1.0 - smoothstep(0.0, r * 0.32, length(d - vec2(-0.32, 0.36) * r));
+      float hl = 1.0 - smoothstep(0.0, r * 0.45, length(d - vec2(-0.3, 0.34) * r));
       float a = mix(0.35, 1.0, fl);
       col = mix(col, col * 0.88 + u_top * 0.22, inside * 0.4 * a);
-      col += (rim * 0.3 + hl * 0.75) * a * mix(vec3(1.0), u_top, 0.25);
+      col += (rim * 0.22 + hl * 0.45) * a * mix(vec3(1.0), u_top, 0.3);
     }
   }
 

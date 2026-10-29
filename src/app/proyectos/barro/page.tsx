@@ -1,10 +1,8 @@
-import type { Metadata } from "next";
-import { bySlug } from "@/data/projects";
 import { ProjectOutro } from "@/components/ProjectChrome";
 import { Barro } from "@/experiences/barro/Barro";
+import { projectMetadata } from "@/lib/pages";
 
-const p = bySlug("barro")!;
-export const metadata: Metadata = { title: p.title, description: p.summary };
+export const metadata = projectMetadata("barro", "es");
 
 export default function Page() {
   return (

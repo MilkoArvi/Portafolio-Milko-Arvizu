@@ -42,7 +42,8 @@ export async function createCanScene({ host, progress }: { host: HTMLElement; pr
 
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, small ? 1.5 : 2));
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  // PBR Neutral: hecho para fotografía de producto, deja los colores de la tinta como son
+  renderer.toneMapping = THREE.NeutralToneMapping;
   renderer.toneMappingExposure = 1.0;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.setClearColor(0x000000, 0);
@@ -53,32 +54,85 @@ export async function createCanScene({ host, progress }: { host: HTMLElement; pr
   const aniso = renderer.capabilities.getMaxAnisotropy();
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(30, 1, 0.1, 100);
-  camera.position.set(0, 0, 9);
+  // lente larga, como en fotografía de producto: casi sin deformar la boca de la lata
+  const FOV = 22;
+  const camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 100);
+  camera.position.set(0, 0, 12.4);
 
-  // Estudio de producto: softboxes altos a los lados (las franjas de luz verticales de una lata real),
-  // uno grande arriba y una tira de contraluz.
+  // Estudio de producto: softboxes altos con la caída suave de un difusor real (las franjas verticales
+  // de una lata), uno grande arriba, contraluces y tarjetas negras entre ellos para que el metal tenga
+  // contraste. El ciclorama y el piso toman el tono del jugo: la lata refleja el cuarto donde está.
   const pmrem = new THREE.PMREMGenerator(renderer);
-  const env = new THREE.Scene();
-  // fondo gris medio: el aluminio sin tinta y la tapa necesitan algo claro que reflejar desde cualquier ángulo
-  env.background = new THREE.Color("#3a3b3d");
-  const panel = (w: number, h: number, k: number, pos: [number, number, number], tint = [1, 1, 1]) => {
-    const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: new THREE.Color(k * tint[0], k * tint[1], k * tint[2]), side: THREE.DoubleSide }));
-    m.position.set(...pos);
-    m.lookAt(0, 0, 0);
-    env.add(m);
+  const gradient = (w: number, h: number, fn: (u: number, v: number) => number, stops?: string[]) => {
+    const c = document.createElement("canvas");
+    c.width = w; c.height = h;
+    const ctx = c.getContext("2d")!;
+    if (stops) {
+      const g = ctx.createLinearGradient(0, 0, 0, h);
+      stops.forEach((s, i) => g.addColorStop(i / (stops.length - 1), s));
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, w, h);
+    } else {
+      const im = ctx.createImageData(w, h);
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+        im.data[i] = im.data[i + 1] = im.data[i + 2] = fn(x / (w - 1), y / (h - 1)) * 255;
+        im.data[i + 3] = 255;
+      }
+      ctx.putImageData(im, 0, 0);
+    }
+    return c;
   };
-  panel(1.6, 12, 6, [-6, 0, 4]);
-  panel(1.0, 12, 3.5, [6.5, 0, 3]);
-  panel(10, 6, 2.5, [0, 9, 0]);
-  panel(0.8, 12, 4, [-3, 0, -7], [0.9, 0.95, 1]);
-  panel(0.8, 12, 4, [4, 0, -7]);
-  panel(30, 30, 0.35, [0, -10, 0]);
-  panel(14, 4, 1.6, [0, 3, 9]);
-  panel(8, 8, 1.2, [-7, 6, -2]);
-  const envTex = pmrem.fromScene(env, 0.02).texture;
-  env.traverse((o) => { const m = o as T.Mesh; if (m.isMesh) { m.geometry.dispose(); (m.material as T.Material).dispose(); } });
-  scene.environment = envTex;
+  const diffuser = new THREE.CanvasTexture(gradient(64, 256, (u, v) => {
+    const du = Math.abs(u - 0.5) * 2, dv = Math.abs(v - 0.5) * 2;
+    return (1 - smoothstep(Math.max(0, (du - 0.5) / 0.5))) * (1 - smoothstep(Math.max(0, (dv - 0.82) / 0.18))) * (0.86 + 0.14 * Math.cos(du * 1.6));
+  }));
+  const studio = (tintHex: string) => {
+    const env = new THREE.Scene();
+    const tint = new THREE.Color(tintHex);
+    const hex = (c: T.Color) => `#${c.getHexString()}`;
+    const grey = new THREE.Color("#5b5d61");
+    const sweep = new THREE.CanvasTexture(gradient(4, 256, () => 0, [
+      hex(grey.clone().lerp(tint, 0.25).multiplyScalar(1.15)),
+      hex(grey.clone().lerp(tint, 0.4).multiplyScalar(0.62)),
+      hex(new THREE.Color("#1c1d1f").lerp(tint, 0.35)),
+      hex(new THREE.Color("#111213").lerp(tint, 0.5)),
+    ]));
+    sweep.colorSpace = THREE.SRGBColorSpace;
+    env.add(new THREE.Mesh(new THREE.SphereGeometry(40, 32, 16), new THREE.MeshBasicMaterial({ map: sweep, side: THREE.BackSide })));
+    const panel = (w: number, h: number, k: number, pos: [number, number, number], tintK = 0, map: T.Texture | null = diffuser) => {
+      const col = new THREE.Color(1, 1, 1).lerp(tint, tintK).multiplyScalar(k);
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ color: col, map, side: THREE.DoubleSide }));
+      m.position.set(...pos);
+      m.lookAt(0, 0, 0);
+      env.add(m);
+    };
+    panel(2.4, 13, 8, [-6, 0.5, 4]); // softbox principal
+    panel(1.2, 13, 5, [6.5, 0, 3]); // tira del otro lado
+    panel(10, 6, 2.8, [0, 9, 0]); // cenital
+    panel(0.9, 13, 5.5, [-3.2, 0, -7]); // contraluces
+    panel(0.9, 13, 4.5, [4, 0, -7]);
+    panel(14, 5, 0.75, [0, 1.5, 10], 0.15); // tarjeta de relleno detrás de la cámara
+    panel(9, 12, 0.7, [8, 0, -4], 0.75); // rebote del jugo
+    panel(30, 30, 0.5, [0, -10, 0], 0.6, null); // piso
+    panel(2.2, 14, 0, [2.6, 0, 9], 0, null); // tarjetas negras: el borde oscuro de cada franja
+    panel(1.6, 14, 0, [-3.6, 0, 8.2], 0, null);
+    const t = pmrem.fromScene(env, 0.02).texture;
+    env.traverse((o) => {
+      const m = o as T.Mesh;
+      if (!m.isMesh) return;
+      const mat = m.material as T.MeshBasicMaterial;
+      if (mat.map && mat.map !== diffuser) mat.map.dispose();
+      m.geometry.dispose();
+      mat.dispose();
+    });
+    return t;
+  };
+  // portada y cierre con agua mineral; un estudio por sabor
+  const envs = [studio("#d9d3c2"), ...FLAVORS.map((f) => studio(f.juice[1]))];
+  diffuser.dispose();
+  let envAt = 0;
+  scene.environment = envs[0];
 
   const key = new THREE.DirectionalLight("#ffffff", 1.6);
   key.position.set(-3, 5, 5);
@@ -279,11 +333,14 @@ export async function createCanScene({ host, progress }: { host: HTMLElement; pr
       return (ring + glint + 0.06) * (1 - smoothstep(Math.max(0, (d - 0.9) / 0.1)));
     }),
   });
+  // media altura visible a la profundidad z
+  const halfView = (z: number) => Math.tan((FOV / 2) * (Math.PI / 180)) * (camera.position.z - z);
   const bokeh = Array.from({ length: small ? 3 : 7 }, () => {
     const s = new THREE.Sprite(bokehMat);
-    s.scale.setScalar(0.14 + Math.random() * 0.32);
-    s.position.set(0, (Math.random() - 0.5) * 5, 2.5 + Math.random() * 2.5);
-    s.userData = { x0: (Math.random() - 0.5) * 5, speed: 0.1 + Math.random() * 0.2, wob: Math.random() * TAU };
+    const z = 5.5 + Math.random() * 3;
+    s.scale.setScalar(0.12 + Math.random() * 0.28);
+    s.position.set(0, (Math.random() - 0.5) * 2 * halfView(z), z);
+    s.userData = { x0: (Math.random() - 0.5) * 3 * halfView(z), speed: 0.08 + Math.random() * 0.16, wob: Math.random() * TAU };
     scene.add(s);
     return s;
   });
@@ -361,6 +418,9 @@ export async function createCanScene({ host, progress }: { host: HTMLElement; pr
     can.rotation.set(cur.rx + drag.tilt + lean.y * 0.16, ry, cur.rz + slosh.a - lean.x * 0.12);
     can.scale.setScalar(cur.s * (W < 768 ? 0.82 : 1));
     if (target.label !== current) { current = target.label; body.map = labels[current]; body.needsUpdate = true; }
+    // el estudio cambia junto con la etiqueta, a medio giro, cuando nadie lo nota
+    const room = Math.round(p * 4) % 4 === 0 ? 0 : Math.round(p * 4);
+    if (room !== envAt) { envAt = room; scene.environment = envs[room]; }
 
     // las gotas bajan con la gravedad: más rápido si la lata está de pie y si la agitas
     can.updateMatrixWorld();
@@ -391,9 +451,10 @@ export async function createCanScene({ host, progress }: { host: HTMLElement; pr
     for (const b of bokeh) {
       const u = b.userData as { x0: number; speed: number; wob: number };
       if (!reduce) b.position.y += dt * u.speed * (1 + shake * 0.3);
-      if (b.position.y > 2.7) { b.position.y = -2.7; u.x0 = (Math.random() - 0.5) * 5; }
+      const hv = halfView(b.position.z) + 0.3;
+      if (b.position.y > hv) { b.position.y = -hv; u.x0 = (Math.random() - 0.5) * 2 * hv * Math.min(2, W / H); }
       // paralaje: lo cercano se mueve más que la lata cuando mueves el puntero
-      b.position.x = u.x0 + Math.sin(now / 1500 + u.wob) * 0.08 - lean.x * 0.3 * (b.position.z - 1);
+      b.position.x = u.x0 + Math.sin(now / 1500 + u.wob) * 0.06 - lean.x * 0.08 * b.position.z;
     }
 
     renderer.render(scene, camera);
@@ -418,7 +479,7 @@ export async function createCanScene({ host, progress }: { host: HTMLElement; pr
       [bodyGeo, bottomGeo, topGeo, tabGeo, rivet.geometry, scoreLine.geometry, dripGeo, shadow.geometry].forEach((g) => g.dispose());
       [alu, neck, body, water, shadow.material, bokehMat].forEach((m) => m.dispose());
       textures.forEach((t) => t.dispose());
-      envTex.dispose();
+      envs.forEach((t) => t.dispose());
       pmrem.dispose();
       renderer.dispose();
       renderer.forceContextLoss();

@@ -3,10 +3,39 @@
 import Link from "next/link";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
-import { skills } from "@/data/skills";
-import { projects } from "@/data/projects";
+import { skillsFor } from "@/data/skills";
+import { projectsFor } from "@/data/projects";
+import { projectHref } from "@/lib/i18n";
+import { useLocale } from "@/lib/useLocale";
+
+const COPY = {
+  es: {
+    title: "Lo que hago y cómo lo hago",
+    body: "Siete disciplinas que se cruzan en cada proyecto. Elige una para ver en qué me especializo, cómo la pongo en práctica y dónde se ve.",
+    tabs: "Disciplinas",
+    count: (n: number) => `${n} ${n === 1 ? "proyecto" : "proyectos"}`,
+    specialties: "En qué me especializo",
+    practice: "Cómo lo pongo en práctica",
+    tools: "Herramientas",
+    where: "Dónde se ve",
+  },
+  en: {
+    title: "What I do and how I do it",
+    body: "Seven disciplines that cross paths in every project. Pick one to see what I specialize in, how I put it into practice and where it shows.",
+    tabs: "Disciplines",
+    count: (n: number) => `${n} ${n === 1 ? "project" : "projects"}`,
+    specialties: "What I specialize in",
+    practice: "How I put it into practice",
+    tools: "Tools",
+    where: "Where it shows",
+  },
+};
 
 export function Skills() {
+  const l = useLocale();
+  const t = COPY[l];
+  const skills = skillsFor(l);
+  const projects = projectsFor(l);
   const [active, setActive] = useState(skills[0].id);
   const skill = skills.find((s) => s.id === active)!;
   const related = projects.filter((p) => p.skills.includes(active));
@@ -15,16 +44,16 @@ export function Skills() {
     <section id="habilidades" className="mx-auto max-w-[1440px] scroll-mt-4 px-4 py-24 sm:px-8 sm:py-32">
       <div className="grid gap-4 lg:grid-cols-2 lg:items-end">
         <h2 className="font-display text-[clamp(2rem,4.4vw,3.6rem)] font-medium leading-none tracking-[-0.02em]">
-          Lo que hago y cómo lo hago
+          {t.title}
         </h2>
         <p className="measure text-lg leading-relaxed text-muted">
-          Siete disciplinas que se cruzan en cada proyecto. Elige una para ver en qué me especializo, cómo la pongo en práctica y dónde se ve.
+          {t.body}
         </p>
       </div>
 
       <div className="mt-12 grid gap-8 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,2fr)] lg:gap-14">
         {/* Lista de disciplinas */}
-        <div role="tablist" aria-label="Disciplinas" aria-orientation="vertical" className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 lg:mx-0 lg:flex-col lg:gap-0 lg:overflow-visible lg:border-t lg:border-line lg:px-0">
+        <div role="tablist" aria-label={t.tabs} aria-orientation="vertical" className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 lg:mx-0 lg:flex-col lg:gap-0 lg:overflow-visible lg:border-t lg:border-line lg:px-0">
           {skills.map((s) => {
             const on = s.id === active;
             const count = projects.filter((p) => p.skills.includes(s.id)).length;
@@ -41,7 +70,7 @@ export function Skills() {
                 }`}
               >
                 <span className="relative z-10 font-display text-[1.05rem] lg:text-2xl">{s.name}</span>
-                <span className="relative z-10 hidden text-sm lg:inline">{count} {count === 1 ? "proyecto" : "proyectos"}</span>
+                <span className="relative z-10 hidden text-sm lg:inline">{t.count(count)}</span>
                 {on && <motion.span layoutId="skill-bar" className="absolute -left-4 top-1/2 hidden h-6 w-[3px] -translate-y-1/2 rounded-full bg-mint-deep lg:block" />}
               </button>
             );
@@ -62,7 +91,7 @@ export function Skills() {
 
               <div className="mt-10 grid gap-10 md:grid-cols-2">
                 <div>
-                  <h3 className="text-sm font-semibold text-muted">En qué me especializo</h3>
+                  <h3 className="text-sm font-semibold text-muted">{t.specialties}</h3>
                   <ul className="mt-4 space-y-3">
                     {skill.specialties.map((s) => (
                       <li key={s} className="flex gap-3 leading-snug">
@@ -73,7 +102,7 @@ export function Skills() {
                   </ul>
                 </div>
                 <div>
-                  <h3 className="text-sm font-semibold text-muted">Cómo lo pongo en práctica</h3>
+                  <h3 className="text-sm font-semibold text-muted">{t.practice}</h3>
                   <ul className="mt-4 space-y-3">
                     {skill.practice.map((s) => (
                       <li key={s} className="leading-snug text-ink/85">{s}</li>
@@ -84,14 +113,14 @@ export function Skills() {
 
               <div className="mt-10 flex flex-col gap-6 border-t border-line pt-6 sm:flex-row sm:justify-between">
                 <div>
-                  <h3 className="text-sm font-semibold text-muted">Herramientas</h3>
+                  <h3 className="text-sm font-semibold text-muted">{t.tools}</h3>
                   <p className="mt-2">{skill.tools.join(", ")}</p>
                 </div>
                 <div className="sm:text-right">
-                  <h3 className="text-sm font-semibold text-muted">Dónde se ve</h3>
+                  <h3 className="text-sm font-semibold text-muted">{t.where}</h3>
                   <div className="mt-2 flex flex-wrap gap-2 sm:justify-end">
                     {related.map((p) => (
-                      <Link key={p.slug} href={`/proyectos/${p.slug}`} className="rounded-full border border-line px-3 py-1.5 text-sm transition-colors hover:border-ink hover:bg-ink hover:text-paper">
+                      <Link key={p.slug} href={projectHref(l, p.slug)} className="rounded-full border border-line px-3 py-1.5 text-sm transition-colors hover:border-ink hover:bg-ink hover:text-paper">
                         {p.title}
                       </Link>
                     ))}

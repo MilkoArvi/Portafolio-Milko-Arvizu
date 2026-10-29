@@ -12,12 +12,13 @@ export type Flavor = {
   ink: string; // texto sobre la lata
   accent: string;
   text: string; // color del texto de la página sobre el jugo
+  en: { name: string; short: string; notes: string }; // la página en inglés (la lata sigue en español: es una marca mexicana)
 };
 
 export const FLAVORS: Flavor[] = [
-  { id: "jamaica", name: "Jamaica y cardamomo", short: "JAMAICA", notes: "Flor de jamaica de Guerrero, cardamomo verde y un toque de limón.", bg: "#7c1230", juice: ["#d63a5e", "#8e1235", "#3d0414"], can: "#9e2f43", ink: "#f8e9ea", accent: "#f2c9bd", text: "#fff3f4" },
-  { id: "pepino", name: "Pepino y menta", short: "PEPINO", notes: "Pepino recién prensado, hierbabuena y agua mineral de manantial.", bg: "#5f9a5c", juice: ["#c7ec9e", "#6fae5f", "#22512d"], can: "#3f7a55", ink: "#eef6ea", accent: "#cfe3c6", text: "#f4fbef" },
-  { id: "toronja", name: "Toronja y romero", short: "TORONJA", notes: "Toronja rosada, romero tostado y una pizca de sal de Colima.", bg: "#e7735d", juice: ["#ffc49a", "#f0745e", "#a8303a"], can: "#d0613f", ink: "#fff1e6", accent: "#f6d4b5", text: "#fff6ee" },
+  { id: "jamaica", name: "Jamaica y cardamomo", short: "JAMAICA", notes: "Flor de jamaica de Guerrero, cardamomo verde y un toque de limón.", bg: "#7c1230", juice: ["#d63a5e", "#8e1235", "#3d0414"], can: "#9e2f43", ink: "#f8e9ea", accent: "#f2c9bd", text: "#fff3f4", en: { name: "Hibiscus and cardamom", short: "HIBISCUS", notes: "Hibiscus flower from Guerrero, green cardamom and a hint of lime." } },
+  { id: "pepino", name: "Pepino y menta", short: "PEPINO", notes: "Pepino recién prensado, hierbabuena y agua mineral de manantial.", bg: "#5f9a5c", juice: ["#c7ec9e", "#6fae5f", "#22512d"], can: "#3f7a55", ink: "#eef6ea", accent: "#cfe3c6", text: "#f4fbef", en: { name: "Cucumber and mint", short: "CUCUMBER", notes: "Freshly pressed cucumber, spearmint and spring mineral water." } },
+  { id: "toronja", name: "Toronja y romero", short: "TORONJA", notes: "Toronja rosada, romero tostado y una pizca de sal de Colima.", bg: "#e7735d", juice: ["#ffc49a", "#f0745e", "#a8303a"], can: "#d0613f", ink: "#fff1e6", accent: "#f6d4b5", text: "#fff6ee", en: { name: "Grapefruit and rosemary", short: "GRAPEFRUIT", notes: "Pink grapefruit, toasted rosemary and a pinch of Colima salt." } },
 ];
 
 // Agua mineral de la portada y el cierre.
@@ -133,8 +134,31 @@ export function drawLabel(f: Flavor, w: number, h: number) {
   ctx.fillStyle = f.ink;
   ctx.textAlign = "center";
   ctx.fillText("ALU", w * 0.94, h * 0.846);
+
+  // letra chica que corre por el borde de arriba, como en toda lata de verdad
+  ctx.globalAlpha = 0.7;
+  ctx.textAlign = "left";
+  ctx.font = `500 ${h * 0.014}px 'Funnel Sans Variable', sans-serif`;
+  const fine = "BEBIDA CARBONATADA · CONTENIDO NETO 355 ml · CONSÉRVESE EN FRÍO · ";
+  for (let x = w * 0.02, i = 0; i < 3; i++, x += ctx.measureText(fine).width) ctx.fillText(fine, x, h * 0.045);
+  ctx.globalAlpha = 1;
+  // código de lote de inyección de tinta, negro y medio chueco
+  ctx.save();
+  ctx.translate(w * 0.62, h * 0.075);
+  ctx.rotate(-0.012);
+  ctx.fillStyle = "rgba(18,16,16,0.78)";
+  ctx.font = `600 ${h * 0.017}px 'JetBrains Mono Variable', monospace`;
+  ctx.fillText("L2610 4 CAD 04 27 14:32", 0, 0);
+  ctx.restore();
+
+  // la tinta no llega al cuello: arriba y abajo queda una franja de aluminio
+  ctx.fillStyle = SILVER;
+  ctx.fillRect(0, 0, w, h * BARE_EDGE);
+  ctx.fillRect(0, h * (1 - BARE_EDGE), w, h * BARE_EDGE);
   return c;
 }
+
+const BARE_EDGE = 0.014;
 
 // Máscara de aluminio sin tinta: blanco = metal desnudo.
 export function drawMetalMask(w: number, h: number) {
@@ -145,6 +169,9 @@ export function drawMetalMask(w: number, h: number) {
   ctx.fillStyle = "#000";
   ctx.fillRect(0, 0, w, h);
   for (const l of LEAVES) leaf(ctx, w * l.x, h * l.y, h * l.len, l.ang, "#fff");
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, w, h * BARE_EDGE);
+  ctx.fillRect(0, h * (1 - BARE_EDGE), w, h * BARE_EDGE);
   return c;
 }
 

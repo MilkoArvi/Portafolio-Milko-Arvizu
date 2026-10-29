@@ -6,7 +6,12 @@ const nextConfig: NextConfig = {
   experimental: { optimizePackageImports: ["motion", "three"] },
   // El nivel del juego genérico ahora es Punk Cowboy.
   async redirects() {
-    return [{ source: "/proyectos/unity", destination: "/proyectos/punk-cowboy", permanent: true }];
+    return [
+      { source: "/proyectos/unity", destination: "/proyectos/punk-cowboy", permanent: true },
+      { source: "/en/projects/unity", destination: "/en/projects/punk-cowboy", permanent: true },
+      // por si alguien escribe la ruta en español con el prefijo en inglés
+      { source: "/en/proyectos/:slug", destination: "/en/projects/:slug", permanent: true },
+    ];
   },
   // Mike pide el micrófono; el resto del sitio no lo necesita.
   async headers() {

@@ -1,0 +1,9 @@
+node_modules
+.next
+out
+next-env.d.ts
+*.tsbuildinfo
+.env*.local
+.DS_Store
+# la foto original no se publica: el sitio solo usa los datos de src/data/face.ts
+scripts/foto-milko.png

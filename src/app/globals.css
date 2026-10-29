@@ -1,0 +1,76 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #ebece6;
+  --color-paper-2: #e1e3db;
+  --color-ink: #1b201c;
+  --color-muted: #646c65;
+  --color-line: #c8ccc3;
+  --color-night: #131814;
+  --color-night-2: #1b221d;
+  --color-mint: #8fcfa5;
+  --color-mint-deep: #3f7d57;
+  --color-bone: #eef1ea;
+
+  --font-display: "Funnel Display Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Funnel Sans Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono Variable", ui-monospace, monospace;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+}
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+::selection { background: var(--color-mint); color: var(--color-ink); }
+:focus-visible {
+  outline: 2px solid var(--color-mint-deep);
+  outline-offset: 3px;
+  border-radius: 3px;
+}
+.measure { max-width: 60ch; }
+
+/* Canvas de las experiencias WebGL: las viñetas se vuelven transparentes cuando el canvas está activo */
+.gl-on [data-scene] { background: transparent !important; }
+
+/* Ocultar la barra de scroll de la tira sin perder el scroll */
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+@keyframes speedspin { to { transform: rotate(360deg); } }
+@keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+
+/* Pared de bloques del contacto: placas vistas desde arriba, con su botón */
+.brick {
+  position: relative;
+  background: var(--c);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.3), inset 1px 1px 0 1px rgb(255 255 255 / 0.05);
+}
+.brick::after {
+  content: "";
+  position: absolute;
+  inset: 21%;
+  border-radius: 9999px;
+  background: radial-gradient(circle at 34% 30%, rgb(255 255 255 / 0.3), transparent 46%), var(--c);
+  box-shadow: 1px 3px 0 rgb(0 0 0 / 0.4), inset -1px -2px 2px rgb(0 0 0 / 0.22);
+}
+.brick-pop { animation: brick-pop 0.75s cubic-bezier(0.55, 0, 0.8, 0.2) var(--d) both; }
+.brick-in { animation: brick-in 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.25) var(--d) both; }
+@keyframes brick-pop {
+  0% { transform: none; opacity: 1; }
+  28% { transform: translate3d(0, -10%, 0) scale(1.14); opacity: 1; }
+  100% { transform: translate3d(var(--dx), var(--dy), 0) scale(1.7) rotate(var(--r)); opacity: 0; }
+}
+@keyframes brick-in {
+  from { transform: translate3d(0, -70%, 0) scale(1.5); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
